@@ -5,6 +5,9 @@ library(forecast)
 library(purrr)
 library(ggplot2)
 library(plotly)
+library("rnaturalearth")
+library("sf")
+library("scales")
 
 options(encoding="UTF-8")
 
@@ -91,7 +94,7 @@ datosESP1 <-
         N = n(),
         n = sum(!is.na(daily_confirmed)),
         freq = n / N,
-        sel = ifelse(freq < 0.15, FALSE, TRUE)
+        sel = ifelse(freq < 0.05, FALSE, TRUE)
       ) %>%
       filter(sel == TRUE))$administrative_area_level_1)
 
@@ -190,9 +193,41 @@ listaProvincias <- unique(datosESP3$administrative_area_level_3)
 
 ISOcod <- read.csv("./data/ISOcod.csv")
 
+
+
+#------------------------------------------------------------------------------
+# calcular datos para pintar mapas
+#------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+# mapa del mundo
+#------------------------------------------------------------------------------
+datosWorld <- datosESP1 %>%
+  filter(pred == FALSE) %>%
+  filter(!is.na(confirmed)) %>%
+  group_by(id) %>%
+  arrange(date) %>%
+  summarise(
+    date = max(date),
+    confirmed = tail(confirmed, 1),
+    daily_confirmed = tail(daily_confirmed, 1), 
+    inc_14d = tail(inc_14d, 1),
+    rat_inc_14d = tail(rat_inc_14d, 1),
+    deaths = tail(deaths, 1),
+    daily_deaths = tail(daily_deaths, 1),
+    inc_14d_deaths = tail(inc_14d_deaths, 1),
+    rat_inc_14d_deaths = tail(rat_inc_14d_deaths, 1),
+    population = tail(population, 1),
+    rat_inc_14d_deaths = tail(rat_inc_14d_deaths, 1),
+    rat_acum_confirmed_vs_deaths = tail(rat_acum_confirmed_vs_deaths, 1)
+  )
+world <- ne_countries(returnclass = "sf")
+
+world <- merge(x = world, y = datosWorld, by.x = "adm0_a3_is", by.y = "id")
+#------------------------------------------------------------------------------
+
 save(DIAS_PREDICT, datosESP1, datosESP2, datosESP3,
   listaPaises, listaComunidades, listaProvincias,
-  ISOcod,
+  ISOcod, world,
   file = "./data/datosESP.RData"
 )
 

@@ -6,6 +6,9 @@
 #
 #    http://shiny.rstudio.com/
 #
+# set de prueba:
+input = list(tasas = FALSE, 
+             variable = "confirmed")
 
 library(shiny)
 library(shinythemes)
@@ -127,8 +130,16 @@ ui <- fluidPage(
 )
 
 
-# Define server logic required to draw a histogram
+#------------------------------------------------------------------------------
+# Define server 
+#------------------------------------------------------------------------------
 server <- function(input, output) {
+  #----------------------------------------------------------------------------
+  # calculo de gráficas
+  #----------------------------------------------------------------------------
+  
+  # métricas países
+  #----------------------------------------------------------------------------
   mainCalcPais <- reactive({
     datosPais <- datosESP1 %>% filter(administrative_area_level_1 %in% input$selPAI &
       as.Date(date) >= input$dates[1] &
@@ -148,6 +159,8 @@ server <- function(input, output) {
     datosPais
   })
 
+  # métricas comunidades
+  #----------------------------------------------------------------------------
   mainCalcCom <- reactive({
     datosCom <- datosESP2 %>% filter(administrative_area_level_2 %in% input$selCA &
       as.Date(date) >= input$dates[1] &
@@ -165,7 +178,8 @@ server <- function(input, output) {
     datosCom
   })
 
-
+  # métricas provincias España
+  #----------------------------------------------------------------------------
   mainCalcProv <- reactive({
     datosProv <- datosESP3 %>% filter(administrative_area_level_3 %in% input$selPO &
       as.Date(date) >= input$dates[1] &
@@ -183,6 +197,58 @@ server <- function(input, output) {
     datosProv
   })
 
+  
+  #----------------------------------------------------------------------------
+  # Cálculo de mapas
+  #----------------------------------------------------------------------------
+  
+  # cálculo de mapa del mundo
+  #----------------------------------------------------------------------------
+  mapWorldCalc <- reactive({
+    
+    dat <- world %>% 
+      select(name, input$variable, population, geometry)
+      
+    names(dat) <- c("name", "variable", "population", "geometry")
+    
+    mapaWorld <-
+      plot_ly(dat,  
+              split = ~name,
+              color = ~sqrt(abs(variable / population * ifelse(input$tasas, 1e5, 1))),
+              colors = c("#21D19F", "#FC3C0C"),
+              alpha = 0.8,
+              showlegend = FALSE,
+              size = 8,
+              line = list(
+                color = rgb(1, 1, 1, maxColorValue = 256),
+                width = 0.5),
+              text = ~paste0(name, ": ", round(variable / population * ifelse(input$tasas, 1e5, 1), 2), ifelse(input$tasas, " x 1e5 hab", "")),
+              hoveron = "fills",
+              hoverinfo = "text",
+              width = 1200
+      ) %>%
+      layout(plot_bgcolor = rgb(39,43,48, maxColorValue = 256),
+             paper_bgcolor = rgb(39,43,48, maxColorValue = 256),
+             title = list(text = paste(input$variable),
+                          font = list(color = "#8B9BA8",
+                                      size = 14)),
+             margin = list(l = 0, r = 0, b = 0, t = 30, pad = 0)
+      )
+    
+    mapaWorld <- hide_colorbar(mapaWorld)
+    mapaWorld
+    
+  })
+  
+  #----------------------------------------------------------------------------
+  # OUTPUTS
+  #----------------------------------------------------------------------------
+  
+  # GRAFICAS
+  #----------------------------------------------------------------------------
+  
+  # gráficas paises
+  #----------------------------------------------------------------------------
   output$mainPlotPais <- renderPlotly({
     dat <- mainCalcPais()
     if (input$tasas & !input$variable %in% c("rat_inc_14d", "rat_inc_14d_deaths", "rat_acum_confirmed_vs_deaths")) {
@@ -224,121 +290,152 @@ server <- function(input, output) {
 
     ggplotly(p)
   })
-
-  output$mainPlotCom <- renderPlotly({
-    dat <- mainCalcPais()
-    if (input$tasas & !input$variable %in% c("rat_inc_14d", "rat_inc_14d_deaths", "rat_acum_confirmed_vs_deaths")) {
-      denominador <- dat$population / 1e5
-    } else {
-      denominador <- 1
-    }
-
-
-    if (input$parmSuavizado != 0) {
-      p <- ggplot(
-        dat,
-        aes(
-          x = as.Date(date), y = !!as.symbol(input$variable) / denominador,
-          color = as.factor(UnidadGeografica)
-        )
-      ) +
-        geom_smooth(span = input$parmSuavizado / 100, se = FALSE, size = 1) +
-        custom_theme +
-        xlab("Fecha") +
-        ylab("n") +
-        labs(color = "") +
-        ggtitle(input$variable) +
-        scale_x_date(date_breaks = "1 month")
-    } else {
-      p <- ggplot(
-        dat,
-        aes(as.Date(date), !!as.symbol(input$variable) / denominador,
-          color = as.factor(UnidadGeografica)
-        )
-      ) +
-        custom_theme +
-        geom_line() +
-        xlab("Fecha") +
-        ylab("n") +
-        labs(color = "") +
-        ggtitle(input$variable) +
-        scale_x_date(date_breaks = "1 month")
-    }
-
-    ggplotly(p)
-  })
-
-  output$mainPlotProv <- renderPlotly({
-    dat <- mainCalcPais()
-    if (input$tasas & !input$variable %in% c("rat_inc_14d", "rat_inc_14d_deaths", "rat_acum_confirmed_vs_deaths")) {
-      denominador <- dat$population / 1e5
-    } else {
-      denominador <- 1
-    }
-
-
-
-    if (input$parmSuavizado != 0) {
-      p <- ggplot(
-        dat,
-        aes(
-          x = as.Date(date), y = !!as.symbol(input$variable) / denominador,
-          color = as.factor(UnidadGeografica)
-        )
-      ) +
-        geom_smooth(span = input$parmSuavizado / 100, se = FALSE, size = 1) +
-        custom_theme +
-        xlab("Fecha") +
-        ylab("n") +
-        labs(color = "") +
-        scale_x_date(date_breaks = "1 month")
-    } else {
-      p <- ggplot(
-        dat,
-        aes(as.Date(date), !!as.symbol(input$variable) / denominador,
-          color = as.factor(UnidadGeografica)
-        )
-      ) +
-        custom_theme +
-        geom_line() +
-        xlab("Fecha") +
-        ylab("n") +
-        labs(color = "") +
-        scale_x_date(date_breaks = "1 month")
-    }
-
-    ggplotly(p)
-  })
+  #----------------------------------------------------------------------------
   
+  # gráficas comunidades
+  #----------------------------------------------------------------------------
+  output$mainPlotCom <- renderPlotly({
+    dat <- mainCalcCom()
+    if (input$tasas & !input$variable %in% c("rat_inc_14d", "rat_inc_14d_deaths", "rat_acum_confirmed_vs_deaths")) {
+      denominador <- dat$population / 1e5
+    } else {
+      denominador <- 1
+    }
+
+
+    if (input$parmSuavizado != 0) {
+      p <- ggplot(
+        dat,
+        aes(
+          x = as.Date(date), y = !!as.symbol(input$variable) / denominador,
+          color = as.factor(UnidadGeografica)
+        )
+      ) +
+        geom_smooth(span = input$parmSuavizado / 100, se = FALSE, size = 1) +
+        custom_theme +
+        xlab("Fecha") +
+        ylab("n") +
+        labs(color = "") +
+        ggtitle(input$variable) +
+        scale_x_date(date_breaks = "1 month")
+    } else {
+      p <- ggplot(
+        dat,
+        aes(as.Date(date), !!as.symbol(input$variable) / denominador,
+          color = as.factor(UnidadGeografica)
+        )
+      ) +
+        custom_theme +
+        geom_line() +
+        xlab("Fecha") +
+        ylab("n") +
+        labs(color = "") +
+        ggtitle(input$variable) +
+        scale_x_date(date_breaks = "1 month")
+    }
+
+    ggplotly(p)
+  })
+  #----------------------------------------------------------------------------
+
+  #----------------------------------------------------------------------------  
+  # gráficas provincias
+  #----------------------------------------------------------------------------
+  output$mainPlotProv <- renderPlotly({
+    dat <- mainCalcProv()
+    if (input$tasas & !input$variable %in% c("rat_inc_14d", "rat_inc_14d_deaths", "rat_acum_confirmed_vs_deaths")) {
+      denominador <- dat$population / 1e5
+    } else {
+      denominador <- 1
+    }
+
+
+
+    if (input$parmSuavizado != 0) {
+      p <- ggplot(
+        dat,
+        aes(
+          x = as.Date(date), y = !!as.symbol(input$variable) / denominador,
+          color = as.factor(UnidadGeografica)
+        )
+      ) +
+        geom_smooth(span = input$parmSuavizado / 100, se = FALSE, size = 1) +
+        custom_theme +
+        xlab("Fecha") +
+        ylab("n") +
+        labs(color = "") +
+        scale_x_date(date_breaks = "1 month")
+    } else {
+      p <- ggplot(
+        dat,
+        aes(as.Date(date), !!as.symbol(input$variable) / denominador,
+          color = as.factor(UnidadGeografica)
+        )
+      ) +
+        custom_theme +
+        geom_line() +
+        xlab("Fecha") +
+        ylab("n") +
+        labs(color = "") +
+        scale_x_date(date_breaks = "1 month")
+    }
+
+    ggplotly(p)
+  })
+  #----------------------------------------------------------------------------
+  
+  
+  #----------------------------------------------------------------------------
+  # MAPAS
+  #----------------------------------------------------------------------------
   #----------------------------------------------------------------------------
   # pinta mapa del mundo
   #----------------------------------------------------------------------------
   output$mapaWorld <- renderPlotly({
-    if (input$variable == "rat_inc_14d_deaths" & input$tasas) {
-      # mapa tasas fallecidos 14d
-      pWorldInc_14d_fallecidos
-    } else if (input$variable == "deaths" & !input$tasas) {
-      # mapa fallecidos totales
-      pWorldfallecidos
-    } else if (input$variable == "deaths" & input$tasas) {
-      # mapa tasas de fallecidos
-      pWorldTasafallecidos
-    }  else if (input$variable == "rat_acum_confirmed_vs_deaths") {
-      pWorldrat_acum_confirmed_vs_deaths
-    } else {
-      pWorldInc_14d
-    }
+    
+    mapWorldCalc()
+    
+    # if (input$variable == "rat_inc_14d_deaths") {
+    #   # mapa tasas fallecidos 14d
+    #   pWorldrat_Inc_14d_fallecidos
+    # } else if(input$variable == "inc_14d_deaths") {
+    #   pWorldInc_14d_fallecidos
+    # }
+    #   else if (input$variable == "deaths" & !input$tasas) {
+    #   # mapa fallecidos totales
+    #   pWorldfallecidos
+    # } else if (input$variable == "deaths" & input$tasas) {
+    #   # mapa tasas de fallecidos
+    #   pWorldTasafallecidos
+    # }  else if (input$variable == "rat_acum_confirmed_vs_deaths") {
+    #   pWorldrat_acum_confirmed_vs_deaths
+    # } else if (input$variable == "rat_inc_14d") {
+    #   pWorldrat_inc_14d
+    # } else if (input$variable == "inc_14d") {
+    #   pWorldInc_14d
+    # }
+    #   else { 
+    #   pWorldInc_14d
+    # }
     
   })
   #----------------------------------------------------------------------------
+  
 
+  # Mapas comunidades
+  #----------------------------------------------------------------------------
   output$mapaCom <- renderPlotly({
     pMapEsp_2Inc_14d
   })
+  #----------------------------------------------------------------------------
+  
 
+  # Mapas provincias
+  #----------------------------------------------------------------------------
   output$mapaProv <- renderPlotly({
     pMapEsp_3Inc_14d
   })
+  #----------------------------------------------------------------------------
 }
 
 # Run the application

@@ -59,7 +59,7 @@ world <- merge(x = world, y = kk, by.x = "adm0_a3_is", by.y = "id")
 pWorldInc_14d <-
   plot_ly(world,  
           split = ~name,
-          color = ~sqrt(inc_14by100hab),
+          color = ~sqrt(abs(inc_14by100hab)),
           colors = c("#21D19F", "#FC3C0C"),
           alpha = 0.8,
           showlegend = FALSE,
@@ -82,10 +82,38 @@ pWorldInc_14d <-
 
 pWorldInc_14d <- hide_colorbar(pWorldInc_14d)
 
+# mapa mundial razón de tasas muertes últimos 14 días
+pWorldrat_inc_14d <-
+  plot_ly(world %>% filter(is.finite(rat_inc_14d)),  
+          split = ~name,
+          color = ~sqrt(abs(rat_inc_14d)),
+          colors = c("#21D19F", "#FC3C0C"),
+          alpha = 0.8,
+          showlegend = FALSE,
+          size = 8,
+          line = list(
+            color = rgb(1, 1, 1, maxColorValue = 256),
+            width = 0.5),
+          text = ~paste(name, ": ", round(rat_inc_14d, 2)),
+          hoveron = "fills",
+          hoverinfo = "text",
+          width = 1200
+  ) %>%
+  layout(plot_bgcolor = rgb(39,43,48, maxColorValue = 256),
+         paper_bgcolor = rgb(39,43,48, maxColorValue = 256),
+         title = list(text = paste("razón de tasas de casos diagnosticasos últimos 14 días"),
+                      font = list(color = "#8B9BA8",
+                                  size = 14)),
+         margin = list(l = 0, r = 0, b = 0, t = 30, pad = 0)
+  )
+
+pWorldrat_inc_14d <- hide_colorbar(pWorldrat_inc_14d)
+
+
 
 
 # mapa mundial tasa muertes últimos 14 días
-pWorldInc_14d_fallecidos <-
+pWorldrat_Inc_14d_fallecidos <-
   plot_ly(world,  
           split = ~name,
           color = ~sqrt(inc_14by100hab_deaths),
@@ -109,10 +137,37 @@ pWorldInc_14d_fallecidos <-
          margin = list(l = 0, r = 0, b = 0, t = 30, pad = 0)
   )
 
+pWorldrat_Inc_14d_fallecidos <- hide_colorbar(pWorldrat_Inc_14d_fallecidos)
+
+# mapa mundial tasa muertes últimos 14 días
+pWorldInc_14d_fallecidos <-
+  plot_ly(world,  
+          split = ~name,
+          color = ~sqrt(inc_14d_deaths),
+          colors = c("#21D19F", "#FC3C0C"),
+          alpha = 0.8,
+          showlegend = FALSE,
+          size = 8,
+          line = list(
+            color = rgb(1, 1, 1, maxColorValue = 256),
+            width = 0.5),
+          text = ~paste(name, ": ", round(inc_14by100hab_deaths, 2)),
+          hoveron = "fills",
+          hoverinfo = "text",
+          width = 1200
+  ) %>%
+  layout(plot_bgcolor = rgb(39,43,48, maxColorValue = 256),
+         paper_bgcolor = rgb(39,43,48, maxColorValue = 256),
+         title = list(text = paste("Inicidencia acumulada fallecidos últimos 14 días"),
+                      font = list(color = "#8B9BA8",
+                                  size = 14)),
+         margin = list(l = 0, r = 0, b = 0, t = 30, pad = 0)
+  )
+
 pWorldInc_14d_fallecidos <- hide_colorbar(pWorldInc_14d_fallecidos)
 
 
-# mapa mundial casos
+# mapa mundial casos totales
 pWorldcasos <-
   plot_ly(world,  
           split = ~name,
@@ -139,11 +194,11 @@ pWorldcasos <-
 
 pWorldcasos <- hide_colorbar(pWorldcasos)
 
-# mapa mundial fallecidos
+# mapa mundial total fallecidos
 pWorldfallecidos <-
   plot_ly(world,  
           split = ~name,
-          color = ~sqrt(inc_14by100hab_deaths),
+          color = ~sqrt(deaths),
           colors = c("#21D19F", "#FC3C0C"),
           alpha = 0.8,
           showlegend = FALSE,
@@ -151,7 +206,7 @@ pWorldfallecidos <-
           line = list(
             color = rgb(1, 1, 1, maxColorValue = 256),
             width = 0.5),
-          text = ~paste(name, ": ", round(inc_14by100hab_deaths, 2), " x 1e5 hab"),
+          text = ~paste(name, ": ", round(deaths, 2)),
           hoveron = "fills",
           hoverinfo = "text",
           width = 1200
@@ -287,6 +342,7 @@ pMapEsp_3Inc_14d <- ggplot(
 
 save(pMapEsp_2Inc_14d, 
      pWorldInc_14d, pWorldTasafallecidos, pWorldfallecidos, pWorldcasos, 
-     pWorldInc_14d_fallecidos, pWorldrat_acum_confirmed_vs_deaths, 
+     pWorldInc_14d_fallecidos, pWorldrat_Inc_14d_fallecidos, pWorldrat_acum_confirmed_vs_deaths, 
+     pWorldrat_inc_14d, 
      pMapEsp_3Inc_14d, file = "./data/mapas.RData")
 
