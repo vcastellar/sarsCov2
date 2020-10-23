@@ -220,8 +220,7 @@ datosWorld <- datosESP1 %>%
     rat_inc_14d_deaths = tail(rat_inc_14d_deaths, 1),
     rat_acum_confirmed_vs_deaths = tail(rat_acum_confirmed_vs_deaths, 1)
   )
-world <- ne_countries(returnclass = "sf")
-
+world <- ne_countries(scale = "small", returnclass = "sf")
 world <- merge(x = world, y = datosWorld, by.x = "adm0_a3_is", by.y = "id")
 #------------------------------------------------------------------------------
 

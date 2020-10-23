@@ -197,6 +197,10 @@ server <- function(input, output) {
     datosProv
   })
 
+  # Calcula nombre de la métrica
+  nameMetric <- reactive({
+    paste0(input$variable, ifelse(input$tasas, "Rat", ""))
+  })
   
   #----------------------------------------------------------------------------
   # Cálculo de mapas
@@ -204,42 +208,7 @@ server <- function(input, output) {
   
   # cálculo de mapa del mundo
   #----------------------------------------------------------------------------
-  mapWorldCalc <- reactive({
-    
-    dat <- world %>% 
-      select(name, input$variable, population, geometry)
-      
-    names(dat) <- c("name", "variable", "population", "geometry")
-    
-    mapaWorld <-
-      plot_ly(dat,  
-              split = ~name,
-              color = ~sqrt(abs(variable / population * ifelse(input$tasas, 1e5, 1))),
-              colors = c("#21D19F", "#FC3C0C"),
-              alpha = 0.8,
-              showlegend = FALSE,
-              size = 8,
-              line = list(
-                color = rgb(1, 1, 1, maxColorValue = 256),
-                width = 0.5),
-              text = ~paste0(name, ": ", round(variable / population * ifelse(input$tasas, 1e5, 1), 2), ifelse(input$tasas, " x 1e5 hab", "")),
-              hoveron = "fills",
-              hoverinfo = "text",
-              width = 1200
-      ) %>%
-      layout(plot_bgcolor = rgb(39,43,48, maxColorValue = 256),
-             paper_bgcolor = rgb(39,43,48, maxColorValue = 256),
-             title = list(text = paste(input$variable),
-                          font = list(color = "#8B9BA8",
-                                      size = 14)),
-             margin = list(l = 0, r = 0, b = 0, t = 30, pad = 0)
-      )
-    
-    mapaWorld <- hide_colorbar(mapaWorld)
-    mapaWorld
-    
-  })
-  
+ 
   #----------------------------------------------------------------------------
   # OUTPUTS
   #----------------------------------------------------------------------------
@@ -392,32 +361,7 @@ server <- function(input, output) {
   # pinta mapa del mundo
   #----------------------------------------------------------------------------
   output$mapaWorld <- renderPlotly({
-    
-    mapWorldCalc()
-    
-    # if (input$variable == "rat_inc_14d_deaths") {
-    #   # mapa tasas fallecidos 14d
-    #   pWorldrat_Inc_14d_fallecidos
-    # } else if(input$variable == "inc_14d_deaths") {
-    #   pWorldInc_14d_fallecidos
-    # }
-    #   else if (input$variable == "deaths" & !input$tasas) {
-    #   # mapa fallecidos totales
-    #   pWorldfallecidos
-    # } else if (input$variable == "deaths" & input$tasas) {
-    #   # mapa tasas de fallecidos
-    #   pWorldTasafallecidos
-    # }  else if (input$variable == "rat_acum_confirmed_vs_deaths") {
-    #   pWorldrat_acum_confirmed_vs_deaths
-    # } else if (input$variable == "rat_inc_14d") {
-    #   pWorldrat_inc_14d
-    # } else if (input$variable == "inc_14d") {
-    #   pWorldInc_14d
-    # }
-    #   else { 
-    #   pWorldInc_14d
-    # }
-    
+    get(paste0("map_World", nameMetric()))
   })
   #----------------------------------------------------------------------------
   
