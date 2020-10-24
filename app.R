@@ -5,10 +5,10 @@
 # Find out more about building applications with Shiny here:
 #
 #    http://shiny.rstudio.com/
-#
-# set de prueba:
-input = list(tasas = FALSE, 
-             variable = "confirmed")
+# #
+# # set de prueba:
+# input = list(tasas = FALSE, 
+#              variable = "confirmed")
 
 library(shiny)
 library(shinythemes)
@@ -54,7 +54,8 @@ ui <- fluidPage(
           "fallecidos diarios" = "daily_deaths",
           "fallecidos IA 14" = "inc_14d_deaths",
           "razón de tasas fall. IA 14d" = "rat_inc_14d_deaths",
-          "porc. fallecidos vs casos" = "rat_acum_confirmed_vs_deaths"
+          "porc. fallecidos vs casos" = "rat_acum_confirmed_vs_deaths",
+          "porc. fallecidos vs casos 14d" = "rat_inc_14d_acum_confirmed_vs_deaths"
         ),
         multiple = FALSE,
         selected = "confirmados diarios"
@@ -133,7 +134,7 @@ ui <- fluidPage(
 #------------------------------------------------------------------------------
 # Define server 
 #------------------------------------------------------------------------------
-server <- function(input, output) {
+server <- function(input, output, session) {
   #----------------------------------------------------------------------------
   # calculo de gráficas
   #----------------------------------------------------------------------------
@@ -206,8 +207,47 @@ server <- function(input, output) {
   # Cálculo de mapas
   #----------------------------------------------------------------------------
   
-  # cálculo de mapa del mundo
+  # cálculo de mapa x comunidades
   #----------------------------------------------------------------------------
+  datMapaComunidades <- reactive({
+    variable <- input$variable
+    tasas <- input$tasas
+    dat <- mapComunidades %>% 
+      dplyr::select(name, variable, population, geometry)
+    
+    names(dat) <- c("name", "variable", "population", "geometry")
+    dat[is.na(dat)] <- 0
+    
+    # tranformación de johnson para normalizar la variable. Esta variable 
+    # transformada será la que definirá el color del area geografica
+    tryCatch({
+      y <- dat$variable
+      if (!grepl("rat", variable) & tasas) {
+        y <- dat$variable / dat$population * 1e5
+      }
+      isfinite <- sapply(y, is.finite)
+      y[isfinite] <- jtrans(y[isfinite])$transformed
+      nueva_col <- y 
+    }, error = function(e) {
+      nueva_col <<- dat$variable
+    })
+    
+    
+    # este es el valor numerico que se representa en el text del plotly
+    nueva_var <- dat$variable
+    if (grepl("rat", variable)) {
+      nueva_var <- dat$variable
+    }
+    if (!grepl("rat", variable) & tasas) {
+      nueva_var <- dat$variable / dat$population * 1e5
+    }
+    
+    
+    dat$Z_score<- nueva_col
+    dat$variable <- nueva_var
+    
+    dat <- dat %>% filter(is.finite(Z_score))
+  })
  
   #----------------------------------------------------------------------------
   # OUTPUTS
@@ -220,7 +260,7 @@ server <- function(input, output) {
   #----------------------------------------------------------------------------
   output$mainPlotPais <- renderPlotly({
     dat <- mainCalcPais()
-    if (input$tasas & !input$variable %in% c("rat_inc_14d", "rat_inc_14d_deaths", "rat_acum_confirmed_vs_deaths")) {
+    if (input$tasas & !grepl("rat", input$variable)) {
       denominador <- dat$population / 1e5
     } else {
       denominador <- 1
@@ -369,15 +409,65 @@ server <- function(input, output) {
   # Mapas comunidades
   #----------------------------------------------------------------------------
   output$mapaCom <- renderPlotly({
-    pMapEsp_2Inc_14d
+    plot_ly(mapComunidades,
+            showlegend = FALSE,
+            size = 8,
+            line = list(color = rgb(1, 1, 1, maxColorValue = 256),
+                        width = 0.5)
+            ) %>% 
+      layout(plot_bgcolor = rgb(39,43,48, maxColorValue = 256),
+             paper_bgcolor = rgb(39,43,48, maxColorValue = 256),
+             title = list(text = paste(variable),
+                         font = list(color = "#8B9BA8",
+                                     size = 14)),
+                         margin = list(l = 0, r = 0, b = 0, t = 30, pad = 0)
+            ) %>% 
+      add_sf(data = datMapaComunidades(),
+             split = ~name,
+             color = ~Z_score,
+             colors = c("#21D19F", "#FFFFFF", "#FC3C0C"),
+             alpha = 0.8,
+             hoveron = "fills",
+             hoverinfo = "text",
+             text = ~paste0(name, ": ", 
+                            round(dat$variable, 2),
+                            ifelse(tasas & !grepl("rat", variable), " x 1e5 hab", "")),
+             hoveron = "fills",
+             hoverinfo = "text")
   })
+  
+  # observeEvent(input$variable, {
+  #   dat <- datMapaComunidades()
+  #   plotlyProxy("mapaCom", session) %>%
+  #     plotlyProxyInvoke(
+  #       "add_sf",
+  #       list(
+  #         split = ~dat$name,
+  #         color = ~dat$Z_score,
+  #         colors = c("#21D19F", "#FFFFFF", "#FC3C0C"),
+  #         alpha = 0.8,
+  #         hoveron = "fills",
+  #         hoverinfo = "text",
+  #         text = ~paste0(dat$name, ": ",
+  #                        round(dat$variable, 2),
+  #                        ifelse(tasas & !grepl("rat", variable), " x 1e5 hab", "")),
+  #         hoveron = "fills",
+  #         hoverinfo = "text"
+  #       )
+  #     )
+  # }
+  # 
+  # )
   #----------------------------------------------------------------------------
   
 
   # Mapas provincias
   #----------------------------------------------------------------------------
   output$mapaProv <- renderPlotly({
-    pMapEsp_3Inc_14d
+    mapPlot(x = mapProvincias, 
+            variable = input$variable,
+            tasas = input$tasas)
+    
   })
   #----------------------------------------------------------------------------
 }

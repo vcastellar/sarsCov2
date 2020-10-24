@@ -7,7 +7,6 @@ library(ggplot2)
 library(plotly)
 library("rnaturalearth")
 library("sf")
-library("scales")
 
 options(encoding="UTF-8")
 
@@ -129,7 +128,8 @@ datosESP1 <- datosESP1 %>%
     deaths= cumsum(daily_deaths),
     inc_14d_deaths = rollapplyr(daily_deaths, width = 14, FUN = sum, fill = 0),
     rat_inc_14d_deaths = c(rep(0, 7), diff(log(inc_14d_deaths), lag = 7) + 1),
-    rat_acum_confirmed_vs_deaths = round(100 * deaths / confirmed, 2)
+    rat_acum_confirmed_vs_deaths = round(100 * deaths / confirmed, 2),
+    rat_inc_14d_acum_confirmed_vs_deaths = round(100 * inc_14d_deaths / inc_14d, 2)
   ) %>%
   arrange(administrative_area_level_1, date)
 
@@ -194,12 +194,34 @@ listaProvincias <- unique(datosESP3$administrative_area_level_3)
 ISOcod <- read.csv("./data/ISOcod.csv")
 
 
+#------------------------------------------------------------------------------
+# tipos var
+#------------------------------------------------------------------------------
+tipoVar <- list(
+  confirmed = list(descripcion = "nº casos totales  confirmados",
+                   unidad = "n",
+                   tipo = "entero"),
+  daily_confirmed = list(descripcion = "nº casos diarios confirmados",
+                         unidad = "n",
+                         tipo = "entero"),
+  inc_14d = list(descripcion = "incidencia de casos últimos 14 días (IA 14d)",
+                 unidad = "n",
+                 tipo = "entero"),
+  rat_inc_14d = list(descripcion = "razón de tasas de IA casos 14d",
+                     unidad = "%",
+                     tipo = "porcentaje")
+  
+  
+)
+#------------------------------------------------------------------------------
+
+
 
 #------------------------------------------------------------------------------
 # calcular datos para pintar mapas
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
-# mapa del mundo
+# datos mapa del mundo
 #------------------------------------------------------------------------------
 datosWorld <- datosESP1 %>%
   filter(pred == FALSE) %>%
@@ -218,15 +240,75 @@ datosWorld <- datosESP1 %>%
     rat_inc_14d_deaths = tail(rat_inc_14d_deaths, 1),
     population = tail(population, 1),
     rat_inc_14d_deaths = tail(rat_inc_14d_deaths, 1),
-    rat_acum_confirmed_vs_deaths = tail(rat_acum_confirmed_vs_deaths, 1)
+    rat_acum_confirmed_vs_deaths = tail(rat_acum_confirmed_vs_deaths, 1),
+    rat_inc_14d_acum_confirmed_vs_deaths = tail(rat_inc_14d_acum_confirmed_vs_deaths, 1)
   )
 world <- ne_countries(scale = "small", returnclass = "sf")
 world <- merge(x = world, y = datosWorld, by.x = "adm0_a3_is", by.y = "id")
 #------------------------------------------------------------------------------
 
+
+#------------------------------------------------------------------------------
+# datos mapa comunidades
+#------------------------------------------------------------------------------
+datosCom <- datosESP2 %>%
+  filter(pred == FALSE) %>%
+  filter(!is.na(confirmed)) %>%
+  group_by(id, administrative_area_level_2) %>%
+  arrange(date) %>%
+  summarise(
+    date = max(date),
+    confirmed = tail(confirmed, 1),
+    daily_confirmed = tail(daily_confirmed, 1), 
+    inc_14d = tail(inc_14d, 1),
+    rat_inc_14d = tail(rat_inc_14d, 1),
+    population = tail(population, 1)
+  )
+
+mapComunidades <- readRDS("./data/gadm36_ESP_1_sf.rds") %>% 
+  rename(name = NAME_1)
+mapComunidades <- merge(x = mapComunidades, y = datosCom, 
+                        by.y = "administrative_area_level_2", 
+                        by.x = "name") 
+
+#------------------------------------------------------------------------------
+
+
+
+#------------------------------------------------------------------------------
+# datos mapa provincias
+#------------------------------------------------------------------------------
+datosProv <- datosESP3 %>%
+  filter(pred == FALSE) %>%
+  filter(!is.na(confirmed)) %>%
+  group_by(administrative_area_level_3) %>%
+  arrange(date) %>%
+  summarise(
+    date = max(date),
+    confirmed = tail(confirmed, 1),
+    daily_confirmed = tail(daily_confirmed, 1), 
+    inc_14d = tail(inc_14d, 1),
+    rat_inc_14d = tail(rat_inc_14d, 1),
+    population = tail(population, 1)
+  )
+
+mapProvincias <- readRDS("./data/gadm36_ESP_2_sf.rds") %>% 
+  rename(name = NAME_2) %>% 
+  mutate(
+    name = gsub("Lleida", "Lérida", name),
+    name = gsub("Girona", "Gerona", name),
+    name = gsub("Ourense", "Orense", name),
+    name = gsub("A Coruña", "La Coruña", name)
+  )
+mapProvincias <- merge(x = mapProvincias, y = datosProv, 
+                        by.y = "administrative_area_level_3", 
+                        by.x = "name") 
+
+#------------------------------------------------------------------------------
+
 save(DIAS_PREDICT, datosESP1, datosESP2, datosESP3,
   listaPaises, listaComunidades, listaProvincias,
-  ISOcod, world,
+  ISOcod, world, mapProvincias, mapComunidades,
   file = "./data/datosESP.RData"
 )
 

@@ -5,8 +5,7 @@
 library("rnaturalearth")
 library("sf")
 library("scales")
-library("tidyr")
-
+library("jtrans")
 options(encoding="UTF-8")
 
 
@@ -31,40 +30,47 @@ options(encoding="UTF-8")
 #------------------------------------------------------------------------------
 mapPlot <- function(x, variable, tasas) {
   dat <- x %>% 
-    select(name, variable, population, geometry)
+    dplyr::select(name, variable, population, geometry)
   
   names(dat) <- c("name", "variable", "population", "geometry")
   dat[is.na(dat)] <- 0
   
+  # tranformación de johnson para normalizar la variable. Esta variable 
+  # transformada será la que definirá el color del area geografica
+  tryCatch({
+    y <- dat$variable
+    if (!grepl("rat", variable) & tasas) {
+      y <- dat$variable / dat$population * 1e5
+    }
+    isfinite <- sapply(y, is.finite)
+    y[isfinite] <- jtrans(y[isfinite])$transformed
+    nueva_col <- y 
+  }, error = function(e) {
+    nueva_col <<- dat$variable
+  })
+
+  
+  # este es el valor numerico que se representa en el text del plotly
+  nueva_var <- dat$variable
+  if (grepl("rat", variable)) {
+    nueva_var <- dat$variable
+  }
+  if (!grepl("rat", variable) & tasas) {
+    nueva_var <- dat$variable / dat$population * 1e5
+  }
+  
+  
+  dat$Z_score<- nueva_col
+  dat$variable <- nueva_var
+  
   dat <- dat %>% 
-    mutate(variable_col =   
-      if (grepl("rat", variable)) {
-        sqrt(abs(variable)) 
-      } else if (tasas) {
-        sqrt(abs(variable) / population * 1e5)
-      } else {
-        sqrt(abs(variable ))
-        
-      }
-    , variable = 
-      if (grepl("rat", variable)) {
-        variable
-      } else if (tasas) {
-        variable / population * 1e5
-      } else {
-        variable
-      }
-    
-    ) %>% 
-    filter(is.finite(variable_col))
-
-
+    filter(is.finite(Z_score))
   
   mapaWorld <-
     plot_ly(dat,  
             split = ~name,
-            color = ~variable_col,
-            colors = c("#21D19F", "#FC3C0C"),
+            color = ~Z_score,
+            colors = c("#21D19F", "#FFFFFF", "#FC3C0C"),
             alpha = 0.8,
             showlegend = FALSE,
             size = 8,
@@ -86,9 +92,11 @@ mapPlot <- function(x, variable, tasas) {
            margin = list(l = 0, r = 0, b = 0, t = 30, pad = 0)
     )
   
-  plotly_build(hide_colorbar(mapaWorld))
+  plotly_build(mapaWorld)
+  # si queremos ocultar la barra de color: hide_colorbar()
 }
 #------------------------------------------------------------------------------
+
 
 
 
@@ -103,7 +111,8 @@ parm <- expand.grid(
                "daily_deaths",
                "inc_14d_deaths",
                "rat_inc_14d_deaths",
-               "rat_acum_confirmed_vs_deaths"),
+               "rat_acum_confirmed_vs_deaths",
+               "rat_inc_14d_acum_confirmed_vs_deaths"),
   tasas = c(TRUE, FALSE),
   stringsAsFactors = FALSE
 )
@@ -129,66 +138,29 @@ for (i in 1:nrow(parm)) {
 #------------------------------------------------------------------------------
 # mapa de comunidades
 #------------------------------------------------------------------------------
-FUN_TRANS <- "sqrt"
-mapEsp_2 <- readRDS("./data/gadm36_ESP_1_sf.rds")
-
-kk <- datosESP2 %>%
-  filter(date == max(date)) %>%
-  mutate(inc_14by100hab = inc_14d / population * 100000)
-mapEsp_2 <- merge(x = mapEsp_2, y = kk, by.x = "NAME_1", by.y = "administrative_area_level_2")
-
-pMapEsp_2Inc_14d <- ggplot(
-  data = mapEsp_2,
-  aes(text = paste("C.A.::", NAME_1, "<br>", "IA x 1e5 hab.:", round(inc_14by100hab)))
-) +
-  geom_sf(aes(fill = inc_14by100hab)) +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  ggtitle("Inicidencia acumulada últimos 14 días por 100.000 hab.",
-    subtitle = paste0("(", length(unique(mapEsp_2$NAME_1)), " Comunidades autónomas)")
-  ) +
-  scale_fill_gradientn(trans = FUN_TRANS, colours = custom_palette[c(9, 5)]) +
-  custom_theme +
-  theme(panel.grid.major = element_blank())
-
- pMapEsp_2Inc_14d <- ggplotly(pMapEsp_2Inc_14d, width = 1200)
+for (i in 1:2) {
+  variable <- parm$variable[i]
+  tasas    <- parm$tasas[i]
+  mapName  <- paste0("map_Com", variable, ifelse(tasas, "Rat", ""))
+  if (variable %in% names(mapComunidades)) {
+    assign(mapName, mapPlot(x = mapComunidades, variable = variable, tasas = tasas))
+  }
+  
+}
 
 #------------------------------------------------------------------------------
 # mapa de provincias
 #------------------------------------------------------------------------------
-mapEsp_3 <- readRDS("./data/gadm36_ESP_2_sf.rds")
-mapEsp_3 <- mapEsp_3 %>% mutate(
-  NAME_2 = gsub("Lleida", "Lérida", NAME_2),
-  NAME_2 = gsub("A Coruña", "La Coruña", NAME_2),
-  NAME_2 = gsub("Girona", "Gerona", NAME_2),
-  NAME_2 = gsub("Ourense", "Orense", NAME_2)
-)
-mapEsp_3 <- mapEsp_3 %>% filter(NAME_1 != "Islas Canarias")
-
-kk <- datosESP3 %>%
-  filter(date == max(date)) %>%
-  mutate(inc_14by100hab = inc_14d / population * 100000)
-mapEsp_3 <- merge(x = mapEsp_3, y = kk, by.x = "NAME_2", by.y = "administrative_area_level_3")
-
-pMapEsp_3Inc_14d <- ggplot(
-  data = mapEsp_3,
-  aes(text = paste("Provincia.::", NAME_2, "<br>", "IA x 1e5 hab.:", round(inc_14by100hab)))
-) +
-  geom_sf(aes(fill = inc_14by100hab)) +
-  xlab("Longitude") +
-  ylab("Latitude") +
-  ggtitle("Inicidencia acumulada últimos 14 días por 100.000 hab.",
-    subtitle = paste0("(", length(unique(mapEsp_3$NAME_2)), " Provincias)")
-  ) +
-  scale_fill_gradientn(trans = FUN_TRANS, colours = custom_palette[c(9, 5)]) +
-  custom_theme +
-  theme(panel.grid.major = element_blank())
-
- pMapEsp_3Inc_14d <- ggplotly(pMapEsp_3Inc_14d, width = 1200)
+# for (i in 1:2) {
+#   variable <- parm$variable[i]
+#   tasas    <- parm$tasas[i]
+#   mapName  <- paste0("map_Prov", variable, ifelse(tasas, "Rat", ""))
+#   if (variable %in% names(mapComunidades)) {
+#     assign(mapName, mapPlot(x = mapProvincias, variable = variable, tasas = tasas))
+#   }
+#   
+# }
 
 
-
-save(list = ls(pattern = "map_"),
-  pMapEsp_2Inc_14d, 
-     pMapEsp_3Inc_14d, file = "./data/mapas.RData")
+save(list = ls(pattern = "map_"),file = "./data/mapas.RData")
 
