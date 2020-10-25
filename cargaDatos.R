@@ -266,7 +266,7 @@ datosCom <- datosESP2 %>%
   )
 
 mapComunidades <- readRDS("./data/gadm36_ESP_1_sf.rds") %>% 
-  rename(name = NAME_1)
+  mutate(name = NAME_1)
 mapComunidades <- merge(x = mapComunidades, y = datosCom, 
                         by.y = "administrative_area_level_2", 
                         by.x = "name") 
@@ -299,7 +299,8 @@ mapProvincias <- readRDS("./data/gadm36_ESP_2_sf.rds") %>%
     name = gsub("Girona", "Gerona", name),
     name = gsub("Ourense", "Orense", name),
     name = gsub("A Coruña", "La Coruña", name)
-  )
+  ) %>% 
+  filter(!name %in% c('Santa Cruz de Tenerife', 'Las Palmas'))
 mapProvincias <- merge(x = mapProvincias, y = datosProv, 
                         by.y = "administrative_area_level_3", 
                         by.x = "name") 

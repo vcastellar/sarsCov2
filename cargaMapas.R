@@ -29,9 +29,7 @@ options(encoding="UTF-8")
 # se define la siguiente función con la que pintar mapas con plotly
 #------------------------------------------------------------------------------
 mapPlot <- function(x, variable, tasas) {
-  dat <- x %>% 
-    dplyr::select(name, variable, population, geometry)
-  
+  dat <- subset(x, select = c('name', variable, 'population', 'geometry')) 
   names(dat) <- c("name", "variable", "population", "geometry")
   dat[is.na(dat)] <- 0
   
@@ -133,33 +131,6 @@ for (i in 1:nrow(parm)) {
 }
 #------------------------------------------------------------------------------
 
-
-
-#------------------------------------------------------------------------------
-# mapa de comunidades
-#------------------------------------------------------------------------------
-for (i in 1:2) {
-  variable <- parm$variable[i]
-  tasas    <- parm$tasas[i]
-  mapName  <- paste0("map_Com", variable, ifelse(tasas, "Rat", ""))
-  if (variable %in% names(mapComunidades)) {
-    assign(mapName, mapPlot(x = mapComunidades, variable = variable, tasas = tasas))
-  }
-  
-}
-
-#------------------------------------------------------------------------------
-# mapa de provincias
-#------------------------------------------------------------------------------
-# for (i in 1:2) {
-#   variable <- parm$variable[i]
-#   tasas    <- parm$tasas[i]
-#   mapName  <- paste0("map_Prov", variable, ifelse(tasas, "Rat", ""))
-#   if (variable %in% names(mapComunidades)) {
-#     assign(mapName, mapPlot(x = mapProvincias, variable = variable, tasas = tasas))
-#   }
-#   
-# }
 
 
 save(list = ls(pattern = "map_"),file = "./data/mapas.RData")
