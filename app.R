@@ -17,6 +17,7 @@ library(plotly)
 library(dplyr)
 library(sf)
 library(jtrans)
+library(zoo)
 
 options(encoding = "UTF-8")
 
@@ -25,6 +26,8 @@ options(encoding = "UTF-8")
 load("./data/datosESP.RData")
 load("./data/mapas.RData")
 source("customTheme.R")
+
+DATE_START <- as.Date('2020-01-01')
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -37,10 +40,9 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       width = 3,
-      dateRangeInput("dates",
-        label = h3("Date range"),
-        start = "2020-01-01",
-        end = "2020-12-31",
+      dateInput("dates",
+        label = h3("Fecha de Observación"),
+        value = Sys.Date()
       ),
 
       hr(),
@@ -72,38 +74,21 @@ ui <- fluidPage(
         label = h4("nº de días a predecir"), min = 0,
         max = DIAS_PREDICT, value = DIAS_PREDICT
       ),
-      
-      
+
+
       checkboxInput("tasas",
-                    label = h6("representar en tasas x 100.000 hab."),
-                    value = TRUE
+        label = h6("representar en tasas x 100.000 hab."),
+        value = TRUE
       ),
 
       hr(),
-      selectInput("selPAI", h3("País"),
-        choices = listaPaises,
-        selected = "Spain",
-        multiple = TRUE
-      ),
 
-
-
-      selectInput("selCA", h3("Comunidades Autónomas:"),
-        choices = listaComunidades,
-        multiple = TRUE,
-        selected = "Comunidad Valenciana"
-      ),
-
-      selectInput("selPO", h3("Provincia:"),
-        choices = listaProvincias,
-        multiple = TRUE,
-        selected = "Valencia"
-      ),
 
       br(),
 
       p('Guidotti, E., Ardia, D., (2020), "COVID-19 Data Hub", Journal of Open Source Software 5(51):2376, doi:
   10.21105/joss.02376.'),
+      p("https://opendata.ecdc.europa.eu/covid19/"),
 
       textOutput("info")
     ),
@@ -112,22 +97,68 @@ ui <- fluidPage(
 
     # Show a plot of the generated distribution
     mainPanel(
+      width = 9,
       tabsetPanel(
         type = "tabs",
         tabPanel(
           "Países",
-          plotlyOutput("mapaWorld", height = 350),
-          plotlyOutput("mainPlotPais", height = 550)
+          plotlyOutput("mapaWorld", height = 400),
+          fluidRow(
+            column(
+              10,
+              plotlyOutput("mainPlotPais", height = 400)
+            ),
+            column(
+              2,
+              br(), br(), br(), br(),
+              br(), br(), br(), br(),
+              selectInput("selPAI", h5("Selecciona Países"),
+                choices = listaPaises,
+                selected = "Spain",
+                multiple = TRUE
+              )
+            ),
+          )
         ),
         tabPanel(
           "Com. Autónomas",
-          plotlyOutput("mapaCom", height = 350),
-          plotlyOutput("mainPlotCom", height = 550)
+          plotlyOutput("mapaCom", height = 400),
+          fluidRow(
+            column(
+              10,
+              plotlyOutput("mainPlotCom", height = 400)
+            ),
+            column(
+              2,
+              br(), br(), br(), br(),
+              br(), br(), br(), br(),
+              selectInput("selCA", h6("Selecciona C.A.:"),
+                choices = listaComunidades,
+                multiple = TRUE,
+                selected = "Comunidad Valenciana"
+              ),
+            )
+          )
         ),
         tabPanel(
           "Provincias",
-          plotlyOutput("mapaProv", height = 350),
-          plotlyOutput("mainPlotProv", height = 550)
+          plotlyOutput("mapaProv", height = 400),
+          fluidRow(
+            column(
+              10,
+              plotlyOutput("mainPlotProv", height = 400)
+            ),
+            column(
+              2,
+              br(), br(), br(), br(),
+              br(), br(), br(), br(),
+              selectInput("selPO", h6("Selecciona Prov.:"),
+                choices = listaProvincias,
+                multiple = TRUE,
+                selected = "Valencia"
+              )
+            )
+          )
         )
       )
     )
@@ -147,8 +178,8 @@ server <- function(input, output, session) {
   #----------------------------------------------------------------------------
   mainCalcPais <- reactive({
     datosPais <- datosESP1 %>% filter(administrative_area_level_1 %in% input$selPAI &
-      as.Date(date) >= input$dates[1] &
-      as.Date(date) <= input$dates[2])
+      as.Date(date) >= DATE_START &
+      as.Date(date) <= Sys.Date() + input$diasPredict)
     datosPais <- datosPais %>% mutate(UnidadGeografica = administrative_area_level_1)
 
 
@@ -168,8 +199,8 @@ server <- function(input, output, session) {
   #----------------------------------------------------------------------------
   mainCalcCom <- reactive({
     datosCom <- datosESP2 %>% filter(administrative_area_level_2 %in% input$selCA &
-      as.Date(date) >= input$dates[1] &
-      as.Date(date) <= input$dates[2])
+      as.Date(date) >= DATE_START &
+      as.Date(date) <= as.Date(Sys.Date()) + input$diasPredict)
     datosCom <- datosCom %>% mutate(UnidadGeografica = administrative_area_level_2)
 
     datosCom <- datosCom %>%
@@ -187,8 +218,8 @@ server <- function(input, output, session) {
   #----------------------------------------------------------------------------
   mainCalcProv <- reactive({
     datosProv <- datosESP3 %>% filter(administrative_area_level_3 %in% input$selPO &
-      as.Date(date) >= input$dates[1] &
-      as.Date(date) <= input$dates[2])
+      as.Date(date) >= DATE_START &
+      as.Date(date) <= as.Date(Sys.Date()) + input$diasPredict)
     datosProv <- datosProv %>% mutate(UnidadGeografica = administrative_area_level_3)
 
     datosProv <- datosProv %>%
@@ -210,23 +241,23 @@ server <- function(input, output, session) {
   #----------------------------------------------------------------------------
   # Cálculo de mapas
   #----------------------------------------------------------------------------
-  
-  
+
+
   # cálculo de mapas x paises
   #----------------------------------------------------------------------------
   datMapaWorld <- reactive({
     variable <- input$variable
     tasas <- input$tasas
-    dat <-  world %>%  
-      filter(date <= as.character(input$dates[2])) %>% 
-      arrange(name, date) %>% 
-      group_by(name) %>% 
-      summarise_all(function(x) tail(x, 1)) %>% 
+    dat <- world %>%
+      filter(date <= as.character(input$dates)) %>%
+      arrange(name, date) %>%
+      group_by(name) %>%
+      summarise_all(function(x) tail(x, 1)) %>%
       select("name", variable, "population", "geometry")
-    
+
     names(dat) <- c("name", "variable", "population", "geometry")
     dat[is.na(dat)] <- 0
-    
+
     # tranformación de johnson para normalizar la variable. Esta variable
     # transformada será la que definirá el color del area geografica
     tryCatch(
@@ -243,8 +274,8 @@ server <- function(input, output, session) {
         nueva_col <<- dat$variable
       }
     )
-    
-    
+
+
     # este es el valor numerico que se representa en el text del plotly
     nueva_var <- dat$variable
     if (grepl("rat", variable)) {
@@ -253,12 +284,12 @@ server <- function(input, output, session) {
     if (!grepl("rat", variable) & tasas) {
       nueva_var <- dat$variable / dat$population * 1e5
     }
-    
-    
+
+
     dat$Z_score <- nueva_col
     dat$variable <- nueva_var
-    
-    dat <- dat %>% filter(is.finite(Z_score))
+
+    dat$Z_score[!is.finite(dat$Z_score)] <- NA
     dat
   })
   #----------------------------------------------------------------------------
@@ -304,7 +335,7 @@ server <- function(input, output, session) {
     dat$Z_score <- nueva_col
     dat$variable <- nueva_var
 
-    dat <- dat %>% filter(is.finite(Z_score))
+    dat$Z_score[!is.finite(dat$Z_score)] <- NA
     dat
   })
   #----------------------------------------------------------------------------
@@ -351,7 +382,7 @@ server <- function(input, output, session) {
     dat$Z_score <- nueva_col
     dat$variable <- nueva_var
 
-    dat <- dat %>% filter(is.finite(Z_score))
+    dat$Z_score[!is.finite(dat$Z_score)] <- NA
     dat
   })
   #----------------------------------------------------------------------------
@@ -406,35 +437,7 @@ server <- function(input, output, session) {
         scale_x_date(date_breaks = "1 month")
     }
 
-    q <- ggplotly(p) %>% layout(
-      xaxis = list(
-        rangeselector = list(
-          buttons = list(
-            list(
-              count = 3,
-              label = "3 mo",
-              step = "month",
-              stepmode = "backward"),
-            list(
-              count = 6,
-              label = "6 mo",
-              step = "month",
-              stepmode = "backward"),
-            list(
-              count = 1,
-              label = "1 yr",
-              step = "year",
-              stepmode = "backward"),
-            list(
-              count = 1,
-              label = "YTD",
-              step = "year",
-              stepmode = "todate"),
-            list(step = "all"))),
-        
-        rangeslider = list(type = "date")))
-    
-    q
+    ggplotly(p)
   })
   #----------------------------------------------------------------------------
 
@@ -480,34 +483,7 @@ server <- function(input, output, session) {
         scale_x_date(date_breaks = "1 month")
     }
 
-    ggplotly(p) %>% layout(
-      xaxis = list(
-        rangeselector = list(
-          buttons = list(
-            list(
-              count = 3,
-              label = "3 mo",
-              step = "month",
-              stepmode = "backward"),
-            list(
-              count = 6,
-              label = "6 mo",
-              step = "month",
-              stepmode = "backward"),
-            list(
-              count = 1,
-              label = "1 yr",
-              step = "year",
-              stepmode = "backward"),
-            list(
-              count = 1,
-              label = "YTD",
-              step = "year",
-              stepmode = "todate"),
-            list(step = "all"))),
-        
-        rangeslider = list(type = "date")))
-    
+    ggplotly(p)
   })
   #----------------------------------------------------------------------------
 
@@ -553,33 +529,34 @@ server <- function(input, output, session) {
         scale_x_date(date_breaks = "1 month")
     }
 
-    ggplotly(p) %>% layout(
-      xaxis = list(
-        rangeselector = list(
-          buttons = list(
-            list(
-              count = 3,
-              label = "3 mo",
-              step = "month",
-              stepmode = "backward"),
-            list(
-              count = 6,
-              label = "6 mo",
-              step = "month",
-              stepmode = "backward"),
-            list(
-              count = 1,
-              label = "1 yr",
-              step = "year",
-              stepmode = "backward"),
-            list(
-              count = 1,
-              label = "YTD",
-              step = "year",
-              stepmode = "todate"),
-            list(step = "all"))),
-        
-        rangeslider = list(type = "date")))
+    ggplotly(p)
+    # %>% layout(
+    #   xaxis = list(
+    #     rangeselector = list(
+    #       buttons = list(
+    #         list(
+    #           count = 3,
+    #           label = "3 mo",
+    #           step = "month",
+    #           stepmode = "backward"),
+    #         list(
+    #           count = 6,
+    #           label = "6 mo",
+    #           step = "month",
+    #           stepmode = "backward"),
+    #         list(
+    #           count = 1,
+    #           label = "1 yr",
+    #           step = "year",
+    #           stepmode = "backward"),
+    #         list(
+    #           count = 1,
+    #           label = "YTD",
+    #           step = "year",
+    #           stepmode = "todate"),
+    #         list(step = "all"))),
+    #
+    #     rangeslider = list(type = "date")))
   })
   #----------------------------------------------------------------------------
 
@@ -593,16 +570,16 @@ server <- function(input, output, session) {
   # output$mapaWorld <- renderPlotly({
   #   get(paste0("map_World", nameMetric()))
   # })
-  # 
-  
+  #
+
   output$mapaWorld <- renderPlotly({
     plot_ly(
-            showlegend = FALSE,
-            size = 8,
-            line = list(
-              color = rgb(1, 1, 1, maxColorValue = 256),
-              width = 0.5
-            )
+      showlegend = FALSE,
+      size = 8,
+      line = list(
+        color = rgb(0, 0, 0, maxColorValue = 256),
+        width = 0.5
+      )
     ) %>%
       layout(
         plot_bgcolor = rgb(39, 43, 48, maxColorValue = 256),
@@ -633,9 +610,9 @@ server <- function(input, output, session) {
         hoverinfo = "text"
       )
   })
-  
-  
-  
+
+
+
   # observeEvent(input$updateMapa, {
   #   plotlyProxy("mapaWorld", session) %>%
   #     plotlyProxyInvoke(
