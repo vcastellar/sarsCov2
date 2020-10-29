@@ -108,7 +108,7 @@ ui <- fluidPage(
               2,
               br(), br(), br(), br(),
               br(), br(), br(), br(),
-              dateInput("dates",
+              dateInput("datesObsWorld",
                         label = h5("Fecha de Observación"),
                         value = Sys.Date())
               )
@@ -146,7 +146,7 @@ ui <- fluidPage(
               2,
               br(), br(), br(), br(),
               br(), br(), br(), br(),
-              dateInput("dates",
+              dateInput("datesObsCom",
                         label = h5("Fecha de Observación"),
                         value = Sys.Date())
             )
@@ -184,7 +184,7 @@ ui <- fluidPage(
               2,
               br(), br(), br(), br(),
               br(), br(), br(), br(),
-              dateInput("dates",
+              dateInput("datesObsProv",
                         label = h5("Fecha de Observación"),
                         value = Sys.Date())
             )
@@ -301,7 +301,7 @@ server <- function(input, output, session) {
     fechas <- datosMapWorld %>% 
       group_by(id) %>% 
       summarise(maxFec = max(date),
-                obsFec = min(input$dates, maxFec))
+                obsFec = min(input$datesObsWorld, maxFec))
     
     datosMapWorldAux <- merge(x = datosMapWorld, y = fechas, by = "id")
     
@@ -312,7 +312,7 @@ server <- function(input, output, session) {
     world <- merge(x = world_SF, y = datosMapWorldAux, by = "id")
     
     dat <- world %>%
-      filter(date <= as.character(input$dates)) %>%
+      filter(date <= as.character(input$datesObsWorld)) %>%
       arrange(name, date) %>%
       group_by(name) %>%
       summarise_all(function(x) tail(x, 1)) %>%
@@ -367,7 +367,7 @@ server <- function(input, output, session) {
     fechas <- datosMapCom %>% 
       group_by(administrative_area_level_2) %>% 
       summarise(maxFec = max(date),
-                obsFec = min(input$dates, maxFec))
+                obsFec = min(input$datesObsCom, maxFec))
     
     datosMapComAux <- merge(x = datosMapCom, y = fechas, by = "administrative_area_level_2")
     
@@ -379,7 +379,7 @@ server <- function(input, output, session) {
                  by.x = "name", by.y = "administrative_area_level_2")
     
     dat <- com %>%
-      filter(date <= as.character(input$dates)) %>%
+      filter(date <= as.character(input$datesObsCom)) %>%
       arrange(name, date) %>%
       group_by(name) %>%
       summarise_all(function(x) tail(x, 1)) %>%
@@ -435,7 +435,7 @@ server <- function(input, output, session) {
     fechas <- datosMapProv %>% 
       group_by(administrative_area_level_3) %>% 
       summarise(maxFec = max(date),
-                obsFec = min(input$dates, maxFec))
+                obsFec = min(input$datesObsProv, maxFec))
     
     datosMapProvAux <- merge(x = datosMapProv, y = fechas, by = "administrative_area_level_3")
     
@@ -447,7 +447,7 @@ server <- function(input, output, session) {
                  by.x = "name", by.y = "administrative_area_level_3")
     
     dat <- com %>%
-      filter(date <= as.character(input$dates)) %>%
+      filter(date <= as.character(input$datesObsProv)) %>%
       arrange(name, date) %>%
       group_by(name) %>%
       summarise_all(function(x) tail(x, 1)) %>%
