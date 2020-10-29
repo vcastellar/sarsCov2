@@ -12,6 +12,7 @@
 
 library(shiny)
 library(shinythemes)
+library(shinybusy)
 library(ggplot2)
 library(plotly)
 library(dplyr)
@@ -93,6 +94,7 @@ ui <- fluidPage(
     # Show a plot of the generated distribution
     mainPanel(
       width = 9,
+      add_busy_spinner(spin = "fading-circle", color = "#F3FFBD"),
       tabsetPanel(
         type = "tabs",
         
