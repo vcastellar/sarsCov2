@@ -24,7 +24,6 @@ options(encoding = "UTF-8")
 
 # system("Rscript ./cargaDatos.R")
 load("./data/datosESP.RData")
-load("./data/mapas.RData")
 source("customTheme.R")
 
 DATE_START <- as.Date('2020-01-01')
@@ -40,10 +39,6 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       width = 3,
-      dateInput("dates",
-        label = h3("Fecha de Observación"),
-        value = Sys.Date()
-      ),
 
       hr(),
 
@@ -100,9 +95,25 @@ ui <- fluidPage(
       width = 9,
       tabsetPanel(
         type = "tabs",
+        
+        
         tabPanel(
           "Países",
-          plotlyOutput("mapaWorld", height = 400),
+          fluidRow(
+            column(
+              10, 
+              plotlyOutput("mapaWorld", height = 400)
+            ),
+            column(
+              2,
+              br(), br(), br(), br(),
+              br(), br(), br(), br(),
+              dateInput("dates",
+                        label = h5("Fecha de Observación"),
+                        value = Sys.Date())
+              )
+            ),
+          
           fluidRow(
             column(
               10,
@@ -117,12 +128,30 @@ ui <- fluidPage(
                 selected = "Spain",
                 multiple = TRUE
               )
-            ),
+            )
           )
         ),
+        
+        
+        
         tabPanel(
           "Com. Autónomas",
-          plotlyOutput("mapaCom", height = 400),
+          
+          fluidRow(
+            column(
+              10, 
+              plotlyOutput("mapaCom", height = 400)
+            ),
+            column(
+              2,
+              br(), br(), br(), br(),
+              br(), br(), br(), br(),
+              dateInput("dates",
+                        label = h5("Fecha de Observación"),
+                        value = Sys.Date())
+            )
+          ),
+          
           fluidRow(
             column(
               10,
@@ -140,9 +169,27 @@ ui <- fluidPage(
             )
           )
         ),
+        
+        
+        
         tabPanel(
           "Provincias",
-          plotlyOutput("mapaProv", height = 400),
+          
+          fluidRow(
+            column(
+              10, 
+              plotlyOutput("mapaProv", height = 400)
+            ),
+            column(
+              2,
+              br(), br(), br(), br(),
+              br(), br(), br(), br(),
+              dateInput("dates",
+                        label = h5("Fecha de Observación"),
+                        value = Sys.Date())
+            )
+          ),
+          
           fluidRow(
             column(
               10,
@@ -246,8 +293,24 @@ server <- function(input, output, session) {
   # cálculo de mapas x paises
   #----------------------------------------------------------------------------
   datMapaWorld <- reactive({
+    
     variable <- input$variable
     tasas <- input$tasas
+    
+    # seleccionamos datos a fecha de observacion
+    fechas <- datosMapWorld %>% 
+      group_by(id) %>% 
+      summarise(maxFec = max(date),
+                obsFec = min(input$dates, maxFec))
+    
+    datosMapWorldAux <- merge(x = datosMapWorld, y = fechas, by = "id")
+    
+    datosMapWorldAux <- datosMapWorldAux %>% 
+      filter(date == obsFec)
+    
+    # añadimos a los datos la geometria para SF
+    world <- merge(x = world_SF, y = datosMapWorldAux, by = "id")
+    
     dat <- world %>%
       filter(date <= as.character(input$dates)) %>%
       arrange(name, date) %>%
@@ -285,7 +348,7 @@ server <- function(input, output, session) {
       nueva_var <- dat$variable / dat$population * 1e5
     }
 
-
+    # asignamos la variable Z-score
     dat$Z_score <- nueva_col
     dat$variable <- nueva_var
 
@@ -299,11 +362,32 @@ server <- function(input, output, session) {
   datMapaComunidades <- reactive({
     variable <- input$variable
     tasas <- input$tasas
-    dat <- subset(mapComunidades, select = c("name", variable, "population", "geometry"))
-
+    
+    # seleccionamos datos a fecha de observacion
+    fechas <- datosMapCom %>% 
+      group_by(administrative_area_level_2) %>% 
+      summarise(maxFec = max(date),
+                obsFec = min(input$dates, maxFec))
+    
+    datosMapComAux <- merge(x = datosMapCom, y = fechas, by = "administrative_area_level_2")
+    
+    datosMapComAux <- datosMapComAux %>% 
+      filter(date == obsFec)
+    
+    # añadimos a los datos la geometria para SF
+    com <- merge(x = comunidades_SF, y = datosMapComAux, 
+                 by.x = "name", by.y = "administrative_area_level_2")
+    
+    dat <- com %>%
+      filter(date <= as.character(input$dates)) %>%
+      arrange(name, date) %>%
+      group_by(name) %>%
+      summarise_all(function(x) tail(x, 1)) %>%
+      select("name", variable, "population", "geometry")
+    
     names(dat) <- c("name", "variable", "population", "geometry")
     dat[is.na(dat)] <- 0
-
+    
     # tranformación de johnson para normalizar la variable. Esta variable
     # transformada será la que definirá el color del area geografica
     tryCatch(
@@ -320,8 +404,8 @@ server <- function(input, output, session) {
         nueva_col <<- dat$variable
       }
     )
-
-
+    
+    
     # este es el valor numerico que se representa en el text del plotly
     nueva_var <- dat$variable
     if (grepl("rat", variable)) {
@@ -330,11 +414,11 @@ server <- function(input, output, session) {
     if (!grepl("rat", variable) & tasas) {
       nueva_var <- dat$variable / dat$population * 1e5
     }
-
-
+    
+    # asignamos la variable Z-score
     dat$Z_score <- nueva_col
     dat$variable <- nueva_var
-
+    
     dat$Z_score[!is.finite(dat$Z_score)] <- NA
     dat
   })
@@ -346,11 +430,32 @@ server <- function(input, output, session) {
   datMapaProvincias <- reactive({
     variable <- input$variable
     tasas <- input$tasas
-    dat <- subset(mapProvincias, select = c("name", variable, "population", "geometry"))
-
+    
+    # seleccionamos datos a fecha de observacion
+    fechas <- datosMapProv %>% 
+      group_by(administrative_area_level_3) %>% 
+      summarise(maxFec = max(date),
+                obsFec = min(input$dates, maxFec))
+    
+    datosMapProvAux <- merge(x = datosMapProv, y = fechas, by = "administrative_area_level_3")
+    
+    datosMapProvAux <- datosMapProvAux %>% 
+      filter(date == obsFec)
+    
+    # añadimos a los datos la geometria para SF
+    com <- merge(x = provincias_SF, y = datosMapProvAux, 
+                 by.x = "name", by.y = "administrative_area_level_3")
+    
+    dat <- com %>%
+      filter(date <= as.character(input$dates)) %>%
+      arrange(name, date) %>%
+      group_by(name) %>%
+      summarise_all(function(x) tail(x, 1)) %>%
+      select("name", variable, "population", "geometry")
+    
     names(dat) <- c("name", "variable", "population", "geometry")
     dat[is.na(dat)] <- 0
-
+    
     # tranformación de johnson para normalizar la variable. Esta variable
     # transformada será la que definirá el color del area geografica
     tryCatch(
@@ -367,8 +472,8 @@ server <- function(input, output, session) {
         nueva_col <<- dat$variable
       }
     )
-
-
+    
+    
     # este es el valor numerico que se representa en el text del plotly
     nueva_var <- dat$variable
     if (grepl("rat", variable)) {
@@ -377,11 +482,11 @@ server <- function(input, output, session) {
     if (!grepl("rat", variable) & tasas) {
       nueva_var <- dat$variable / dat$population * 1e5
     }
-
-
+    
+    # asignamos la variable Z-score
     dat$Z_score <- nueva_col
     dat$variable <- nueva_var
-
+    
     dat$Z_score[!is.finite(dat$Z_score)] <- NA
     dat
   })
@@ -641,7 +746,7 @@ server <- function(input, output, session) {
   # Mapas comunidades
   #----------------------------------------------------------------------------
   output$mapaCom <- renderPlotly({
-    plot_ly(mapComunidades,
+    plot_ly(,
       showlegend = FALSE,
       size = 8,
       line = list(
@@ -709,7 +814,7 @@ server <- function(input, output, session) {
   # Mapas provincias
   #----------------------------------------------------------------------------
   output$mapaProv <- renderPlotly({
-    plot_ly(mapProvincias,
+    plot_ly(,
       showlegend = FALSE,
       size = 8,
       line = list(

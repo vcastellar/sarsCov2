@@ -11,8 +11,37 @@ library("sf")
 options(encoding = "UTF-8")
 
 source("customTheme.R")
-# constantes
+#------------------------------------------------------------------------------
+# CONSTANTES
+#------------------------------------------------------------------------------
 DIAS_PREDICT <- 28
+
+#------------------------------------------------------------------------------
+# tipos var
+#------------------------------------------------------------------------------
+tipoVar <- list(
+  confirmed = list(
+    descripcion = "nº casos totales  confirmados",
+    unidad = "n",
+    tipo = "entero"
+  ),
+  daily_confirmed = list(
+    descripcion = "nº casos diarios confirmados",
+    unidad = "n",
+    tipo = "entero"
+  ),
+  inc_14d = list(
+    descripcion = "incidencia de casos últimos 14 días (IA 14d)",
+    unidad = "n",
+    tipo = "entero"
+  ),
+  rat_inc_14d = list(
+    descripcion = "razón de tasas de IA casos 14d",
+    unidad = "%",
+    tipo = "porcentaje"
+  )
+)
+#------------------------------------------------------------------------------
 
 # funcion de prediccion a 14 dias
 predict.fun <- function(x, frequency) {
@@ -175,8 +204,9 @@ datosESP3 <- covid19(country = "ESP", level = 3, verbose = TRUE)
 # datosESP3$confirmed[datosESP3$administrative_area_level_3 == "La Rioja"] <- NA
 
 datosESP3 <- datosESP3 %>%
-  group_by(administrative_area_level_3) %>%
   select(date, confirmed, administrative_area_level_3) %>%
+  arrange(date) %>% 
+  group_by(administrative_area_level_3) %>%
   mutate(
     daily_confirmed = c(0, diff(confirmed)),
     avg_7d_daily_confirmed = rollapplyr(daily_confirmed, width = 7, FUN = mean, fill = 0),
@@ -196,33 +226,6 @@ listaProvincias <- unique(datosESP3$administrative_area_level_3)
 ISOcod <- read.csv("./data/ISOcod.csv")
 
 
-#------------------------------------------------------------------------------
-# tipos var
-#------------------------------------------------------------------------------
-tipoVar <- list(
-  confirmed = list(
-    descripcion = "nº casos totales  confirmados",
-    unidad = "n",
-    tipo = "entero"
-  ),
-  daily_confirmed = list(
-    descripcion = "nº casos diarios confirmados",
-    unidad = "n",
-    tipo = "entero"
-  ),
-  inc_14d = list(
-    descripcion = "incidencia de casos últimos 14 días (IA 14d)",
-    unidad = "n",
-    tipo = "entero"
-  ),
-  rat_inc_14d = list(
-    descripcion = "razón de tasas de IA casos 14d",
-    unidad = "%",
-    tipo = "porcentaje"
-  )
-)
-#------------------------------------------------------------------------------
-
 
 
 #------------------------------------------------------------------------------
@@ -231,7 +234,7 @@ tipoVar <- list(
 #------------------------------------------------------------------------------
 # datos mapa del mundo
 #------------------------------------------------------------------------------
-datosWorld <- datosESP1 %>%
+datosMapWorld <- datosESP1 %>%
   filter(pred == FALSE) %>%
   filter(!is.na(confirmed)) %>%
   group_by(id, date) %>%
@@ -249,31 +252,37 @@ datosWorld <- datosESP1 %>%
     rat_acum_confirmed_vs_deaths = tail(rat_acum_confirmed_vs_deaths, 1),
     rat_inc_14d_acum_confirmed_vs_deaths = tail(rat_inc_14d_acum_confirmed_vs_deaths, 1)
   )
-world <- ne_countries(scale = "small", returnclass = "sf")
-world <- merge(x = world, y = datosWorld, by.x = "adm0_a3_is", by.y = "id")
+world_SF <- ne_countries(scale = "small", returnclass = "sf") %>% 
+  rename(id = adm0_a3_is) %>% 
+  select(id, name, continent, subregion, region_wb, geometry)
+  
+# world <- merge(x = world, y = datosWorld, by.x = "adm0_a3_is", by.y = "id")
 #------------------------------------------------------------------------------
 
 
 #------------------------------------------------------------------------------
 # datos mapa comunidades
 #------------------------------------------------------------------------------
-datosCom <- datosESP2 %>%
+datosMapCom <- datosESP2 %>%
   filter(pred == FALSE) %>%
   filter(!is.na(confirmed)) %>%
-  group_by(id, administrative_area_level_2) %>%
+  group_by(id, administrative_area_level_2, date) %>%
   arrange(date) %>%
   mutate(
     maxdate = max(date),
   ) %>%
   filter(date == maxdate)
 
-mapComunidades <- readRDS("./data/gadm36_ESP_1_sf.rds") %>%
-  rename(name = NAME_1)
-mapComunidades <- merge(
-  x = mapComunidades, y = datosCom,
-  by.y = "administrative_area_level_2",
-  by.x = "name"
-)
+comunidades_SF <- readRDS("./data/gadm36_ESP_1_sf.rds") %>%
+  rename(name = NAME_1) %>% 
+  select(name, geometry)
+
+# mapComunidades <- merge(
+#   x = mapComunidades, y = datosCom,
+#   by.y = "administrative_area_level_2",
+#   by.x = "name"
+# ) %>% 
+#   select(name, date, confirmed, daily_confirmed, inc_14d, rat_inc_14d, population, geometry)
 
 #------------------------------------------------------------------------------
 
@@ -282,13 +291,12 @@ mapComunidades <- merge(
 #------------------------------------------------------------------------------
 # datos mapa provincias
 #------------------------------------------------------------------------------
-datosProv <- datosESP3 %>%
+datosMapProv <- datosESP3 %>%
   filter(pred == FALSE) %>%
   filter(!is.na(confirmed)) %>%
-  group_by(administrative_area_level_3) %>%
+  group_by(administrative_area_level_3, date) %>%
   arrange(date) %>%
   summarise(
-    date = max(date),
     confirmed = tail(confirmed, 1),
     daily_confirmed = tail(daily_confirmed, 1),
     inc_14d = tail(inc_14d, 1),
@@ -296,7 +304,7 @@ datosProv <- datosESP3 %>%
     population = tail(population, 1)
   )
 
-mapProvincias <- readRDS("./data/gadm36_ESP_2_sf.rds") %>%
+provincias_SF <- readRDS("./data/gadm36_ESP_2_sf.rds") %>%
   rename(name = NAME_2) %>%
   mutate(
     name = gsub("Lleida", "Lérida", name),
@@ -304,19 +312,25 @@ mapProvincias <- readRDS("./data/gadm36_ESP_2_sf.rds") %>%
     name = gsub("Ourense", "Orense", name),
     name = gsub("A Coruña", "La Coruña", name)
   ) %>%
-  filter(!name %in% c("Santa Cruz de Tenerife", "Las Palmas"))
-mapProvincias <- merge(
-  x = mapProvincias, y = datosProv,
-  by.y = "administrative_area_level_3",
-  by.x = "name"
-)
+  filter(!name %in% c("Santa Cruz de Tenerife", "Las Palmas")) %>% 
+  select(name, geometry)
+
+# mapProvincias <- merge(
+#   x = mapProvincias, y = datosProv,
+#   by.y = "administrative_area_level_3",
+#   by.x = "name"
+# ) %>% 
+#   select(name, date, confirmed, daily_confirmed, inc_14d, rat_inc_14d, population, geometry)
 
 #------------------------------------------------------------------------------
 
-save(DIAS_PREDICT, datosESP1, datosESP2, datosESP3,
-  listaPaises, listaComunidades, listaProvincias,
-  ISOcod, world, mapProvincias, mapComunidades,
-  file = "./data/datosESP.RData"
+save(DIAS_PREDICT, 
+     datosESP1, datosESP2, datosESP3,
+     listaPaises, listaComunidades, listaProvincias,
+     ISOcod, 
+     datosMapWorld, datosMapCom, datosMapProv,
+     world_SF, comunidades_SF, provincias_SF,
+     file = "./data/datosESP.RData"
 )
 
 # source("cargaMapas.R")
