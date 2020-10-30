@@ -45,16 +45,16 @@ ui <- fluidPage(
 
       selectInput("variable", h3("Selecciona variable"),
         c(
-          "casos acumulados" = "confirmed",
-          "casos diarios" = "daily_confirmed",
-          "casos IA 14d" = "inc_14d",
-          "razón de tasas casos IA 14d" = "rat_inc_14d",
-          "fallecidos acumulados" = "deaths",
-          "fallecidos diarios" = "daily_deaths",
-          "fallecidos IA 14" = "inc_14d_deaths",
-          "razón de tasas fall. IA 14d" = "rat_inc_14d_deaths",
-          "porc. fallecidos vs casos" = "rat_acum_confirmed_vs_deaths",
-          "porc. fallecidos vs casos 14d" = "rat_inc_14d_acum_confirmed_vs_deaths"
+          "nº casos totales"= "confirmed",
+          "nº casos diarios"= "daily_confirmed",
+          "incidencia de casos últimos 14 días (IA 14d)" = "inc_14d",
+          "razón de tasas IA 14d"= "rat_inc_14d",
+          "nº de defunciones" = "deaths",
+          "nº defunciones diarias"= "daily_deaths",
+          "incidencia de defunciones últimos 14 días (IA 14d)" = "inc_14d_deaths",
+          "razón de tasas defunciones IA 14d" = "rat_inc_14d_deaths",
+          "porcentaje defunciones frente a casos confirmados"= "rat_acum_confirmed_vs_deaths",
+          "porcentaje defunciones frente a casos últimos 14d" = "rat_inc_14d_acum_confirmed_vs_deaths"
         ),
         multiple = FALSE,
         selected = "confirmados diarios"
@@ -524,9 +524,11 @@ server <- function(input, output, session) {
         geom_smooth(span = input$parmSuavizado / 100, se = FALSE) +
         custom_theme +
         xlab("Fecha") +
-        ylab("n") +
+        ylab(paste(tipoVar[[input$variable]]$unidad, 
+                   ifelse(input$tasas & tipoVar[[input$variable]]$tipo == "numerico" , "x 1e5 hab.", ""))) +
         labs(color = "") +
-        ggtitle(input$variable) +
+        ggtitle(paste(tipoVar[[input$variable]]$descripcion, 
+                      ifelse(input$tasas & tipoVar[[input$variable]]$tipo == "numerico" , "x 1e5 hab.", ""))) +
         scale_x_date(date_breaks = "1 month")
     } else {
       p <- ggplot(
@@ -538,9 +540,11 @@ server <- function(input, output, session) {
         custom_theme +
         geom_line(linetype = ifelse(dat$pred, "dotted", "solid"), size = 0.75 - 0.5 * dat$pred) +
         xlab("Fecha") +
-        ylab("n") +
+        ylab(paste(tipoVar[[input$variable]]$unidad, 
+                   ifelse(input$tasas & tipoVar[[input$variable]]$tipo == "numerico" , "x 1e5 hab.", ""))) +
         labs(color = "") +
-        ggtitle(input$variable) +
+        ggtitle(paste(tipoVar[[input$variable]]$descripcion, 
+                      ifelse(input$tasas & tipoVar[[input$variable]]$tipo == "numerico" , "x 1e5 hab.", ""))) +
         scale_x_date(date_breaks = "1 month")
     }
 
@@ -570,9 +574,11 @@ server <- function(input, output, session) {
         geom_smooth(span = input$parmSuavizado / 100, se = FALSE, size = 1) +
         custom_theme +
         xlab("Fecha") +
-        ylab("n") +
+        ylab(paste(tipoVar[[input$variable]]$unidad, 
+                   ifelse(input$tasas & tipoVar[[input$variable]]$tipo == "numerico" , "x 1e5 hab.", ""))) +
         labs(color = "") +
-        ggtitle(input$variable) +
+        ggtitle(paste(tipoVar[[input$variable]]$descripcion, 
+                      ifelse(input$tasas & tipoVar[[input$variable]]$tipo == "numerico" , "x 1e5 hab.", ""))) +
         scale_x_date(date_breaks = "1 month")
     } else {
       p <- ggplot(
@@ -584,9 +590,11 @@ server <- function(input, output, session) {
         custom_theme +
         geom_line() +
         xlab("Fecha") +
-        ylab("n") +
+        ylab(paste(tipoVar[[input$variable]]$unidad, 
+                   ifelse(input$tasas & tipoVar[[input$variable]]$tipo == "numerico" , "x 1e5 hab.", ""))) +
         labs(color = "") +
-        ggtitle(input$variable) +
+        ggtitle(paste(tipoVar[[input$variable]]$descripcion, 
+                      ifelse(input$tasas & tipoVar[[input$variable]]$tipo == "numerico" , "x 1e5 hab.", ""))) +
         scale_x_date(date_breaks = "1 month")
     }
 
@@ -618,8 +626,11 @@ server <- function(input, output, session) {
         geom_smooth(span = input$parmSuavizado / 100, se = FALSE, size = 1) +
         custom_theme +
         xlab("Fecha") +
-        ylab("n") +
+        ylab(paste(tipoVar[[input$variable]]$unidad, 
+                   ifelse(input$tasas & tipoVar[[input$variable]]$tipo == "numerico" , "x 1e5 hab.", ""))) +
         labs(color = "") +
+        ggtitle(paste(tipoVar[[input$variable]]$descripcion,
+                      ifelse(input$tasas & tipoVar[[input$variable]]$tipo == "numerico" , "x 1e5 hab.", ""))) +
         scale_x_date(date_breaks = "1 month")
     } else {
       p <- ggplot(
@@ -630,9 +641,12 @@ server <- function(input, output, session) {
       ) +
         custom_theme +
         geom_line() +
-        xlab("Fecha") +
+        ylab(paste(tipoVar[[input$variable]]$unidad, 
+                   ifelse(input$tasas & tipoVar[[input$variable]]$tipo == "numerico" , "x 1e5 hab.", ""))) +
         ylab("n") +
         labs(color = "") +
+        ggtitle(paste(tipoVar[[input$variable]]$descripcion, 
+                      ifelse(input$tasas & tipoVar[[input$variable]]$tipo == "numerico" , "x 1e5 hab.", ""))) +
         scale_x_date(date_breaks = "1 month")
     }
 
@@ -692,7 +706,8 @@ server <- function(input, output, session) {
         plot_bgcolor = rgb(39, 43, 48, maxColorValue = 256),
         paper_bgcolor = rgb(39, 43, 48, maxColorValue = 256),
         title = list(
-          text = paste(input$variable),
+          text = paste(tipoVar[[input$variable]]$descripcion, 
+                       ifelse(input$tasas & tipoVar[[input$variable]]$tipo == "numerico" , "x 1e5 hab.", "")),
           font = list(
             color = "#8B9BA8",
             size = 14
@@ -748,7 +763,7 @@ server <- function(input, output, session) {
   # Mapas comunidades
   #----------------------------------------------------------------------------
   output$mapaCom <- renderPlotly({
-    plot_ly(,
+    plot_ly(
       showlegend = FALSE,
       size = 8,
       line = list(
@@ -760,7 +775,8 @@ server <- function(input, output, session) {
         plot_bgcolor = rgb(39, 43, 48, maxColorValue = 256),
         paper_bgcolor = rgb(39, 43, 48, maxColorValue = 256),
         title = list(
-          text = paste(input$variable),
+          text = paste(tipoVar[[input$variable]]$descripcion, 
+                       ifelse(input$tasas & tipoVar[[input$variable]]$tipo == "numerico" , "x 1e5 hab.", "")),
           font = list(
             color = "#8B9BA8",
             size = 14
@@ -816,7 +832,7 @@ server <- function(input, output, session) {
   # Mapas provincias
   #----------------------------------------------------------------------------
   output$mapaProv <- renderPlotly({
-    plot_ly(,
+    plot_ly(
       showlegend = FALSE,
       size = 8,
       line = list(
@@ -828,7 +844,8 @@ server <- function(input, output, session) {
         plot_bgcolor = rgb(39, 43, 48, maxColorValue = 256),
         paper_bgcolor = rgb(39, 43, 48, maxColorValue = 256),
         title = list(
-          text = paste(input$variable),
+          text = paste(tipoVar[[input$variable]]$descripcion, 
+                       ifelse(input$tasas & tipoVar[[input$variable]]$tipo == "numerico" , "x 1e5 hab.", "")),
           font = list(
             color = "#8B9BA8",
             size = 14

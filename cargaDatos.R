@@ -21,22 +21,53 @@ DIAS_PREDICT <- 28
 #------------------------------------------------------------------------------
 tipoVar <- list(
   confirmed = list(
-    descripcion = "nº casos totales  confirmados",
+    descripcion = "nº casos totales",
     unidad = "n",
-    tipo = "entero"
+    tipo = "numerico"
   ),
   daily_confirmed = list(
-    descripcion = "nº casos diarios confirmados",
+    descripcion = "nº casos diarios",
     unidad = "n",
-    tipo = "entero"
+    tipo = "numerico"
   ),
   inc_14d = list(
     descripcion = "incidencia de casos últimos 14 días (IA 14d)",
     unidad = "n",
-    tipo = "entero"
+    tipo = "numerico"
   ),
   rat_inc_14d = list(
-    descripcion = "razón de tasas de IA casos 14d",
+    descripcion = "razón de tasas IA 14d",
+    unidad = "",
+    tipo = "ratio"
+  ),
+  daily_deaths = list(
+    descripcion = "nº defunciones diarias",
+    unidad = "n",
+    tipo = "numerico"
+  ),
+  
+  deaths = list(
+    descripcion = "nº de defunciones",
+    unidad = "n",
+    tipo = "numerico"
+  ),
+  inc_14d_deaths = list(
+    descripcion = "incidencia de defunciones últimos 14 días (IA 14d)",
+    unidad = "n",
+    tipo = "numerico"
+  ),
+  rat_inc_14d_deaths = list(
+    descripcion = "razón de tasas defunciones IA 14d",
+    unidad = "",
+    tipo = "ratio"
+  ),
+  rat_acum_confirmed_vs_deaths = list(
+    descripcion = "porcentaje defunciones frente a casos confirmados",
+    unidad = "%",
+    tipo = "porcentaje"
+  ),
+  rat_inc_14d_acum_confirmed_vs_deaths = list(
+    descripcion = "porcentaje defunciones frente a casos últimos 14d",
     unidad = "%",
     tipo = "porcentaje"
   )
@@ -135,6 +166,7 @@ datosESP1 <- datosESP1 %>%
     daily_confirmed = as.numeric(daily_confirmed),
     daily_deaths = as.numeric(daily_deaths)
   )
+
 
 # calculo de predicciones de casos observados
 pred <- datosESP1 %>%
@@ -330,6 +362,7 @@ save(DIAS_PREDICT,
      ISOcod, 
      datosMapWorld, datosMapCom, datosMapProv,
      world_SF, comunidades_SF, provincias_SF,
+     tipoVar,
      file = "./data/datosESP.RData"
 )
 
