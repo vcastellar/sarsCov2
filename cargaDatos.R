@@ -81,7 +81,7 @@ predict.fun <- function(x, frequency) {
     {
       y <- x$daily_confirmed
       y <- na.approx(y)
-      y[y <= 0] <- 1e-8
+      y[y < 0] <- NA
       x.ts <- ts(data = log(y), frequency = frequency)
       x.ts[is.na(x.ts) | is.infinite(x.ts)] <- 0
       ar <- arima(x.ts, order = c(1, 1, 1), seasonal = c(0, 1, 0))
@@ -97,9 +97,9 @@ predict.fun <- function(x, frequency) {
   tryCatch(
     {
       y <- x$daily_deaths
-      y <- na.approx(y)
-      y[is.na(y)] <- 0
-      y[y <= 0] <- 1e-8
+      # y <- na.approx(y)
+      # y[is.na(y)] <- 0
+      y[y < 0] <- NA
       x.ts <- ts(data = log(y), frequency = frequency)
       ar <- arima(x.ts, order = c(1, 1, 1), seasonal = c(0, 1, 0))
       fc_deaths <- round(exp(forecast(ar, DIAS_PREDICT)$mean), 2)
