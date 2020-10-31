@@ -1,6 +1,7 @@
 #------------------------------------------------------------------------------
 # Recopilación de datos por comunidades
 #------------------------------------------------------------------------------
+library(tidyr)
 library(dplyr)
 
 
@@ -44,3 +45,30 @@ library(dplyr)
 
 CV_defunciones <- 
   read.csv("https://dadesobertes.gva.es/ca/datastore/dump/69c32771-3d18-4654-8c3c-cb423fcfa652?bom=True") 
+CV_defunciones <- CV_defunciones %>% 
+  select(names(CV_defunciones)[!grepl("X_id|Homes|Dones|DEPARTAMENT", names(CV_defunciones))]) 
+names(CV_defunciones) <- c("date", "Comunidad Valenciana", "Alicante", "Castellón", "Valencia")
+CV_defunciones <- CV_defunciones %>% 
+  pivot_longer(cols = c("Comunidad Valenciana", "Alicante", "Castellón", "Valencia"))
+
+CV <- CV_defunciones %>%  
+  filter(name == "Comunidad Valenciana") %>% 
+  rename(administrative_area_level_2 = name,
+         daily_deaths = value) %>% 
+  group_by(administrative_area_level_2) %>% 
+  mutate(date = as.Date(substr(date, 1, 10)),
+         deaths = cumsum(daily_deaths)) 
+
+
+CV_prov <- CV_defunciones %>%  
+  filter(name != "Comunidad Valenciana") %>% 
+  rename(administrative_area_level_3 = name,
+         daily_deaths = value) %>% 
+  group_by(administrative_area_level_3) %>% 
+  mutate(date = as.Date(substr(date, 1, 10)),
+         deaths = cumsum(daily_deaths))
+
+
+# juntamos los datos de todas las comunidades y provincias
+comDefunciones <- CV
+provDefunciones <- CV_prov

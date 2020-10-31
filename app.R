@@ -445,10 +445,10 @@ server <- function(input, output, session) {
       filter(date == obsFec)
     
     # añadimos a los datos la geometria para SF
-    com <- merge(x = provincias_SF, y = datosMapProvAux, 
-                 by.x = "name", by.y = "administrative_area_level_3")
+    prov <- merge(x = provincias_SF, y = datosMapProvAux, 
+                  by.x = "name", by.y = "administrative_area_level_3")
     
-    dat <- com %>%
+    dat <- prov %>%
       filter(date <= as.character(input$datesObsProv)) %>%
       arrange(name, date) %>%
       group_by(name) %>%

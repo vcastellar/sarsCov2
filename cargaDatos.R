@@ -11,6 +11,8 @@ library("sf")
 options(encoding = "UTF-8")
 
 source("customTheme.R")
+source("datComProvDefunciones.R")
+
 #------------------------------------------------------------------------------
 # CONSTANTES
 #------------------------------------------------------------------------------
@@ -221,6 +223,20 @@ datosESP2 <- datosESP2 %>%
 datosESP2 <- merge(x = datosESP2, y = pobComAut, by = "administrative_area_level_2") %>%
   arrange(administrative_area_level_2, date)
 
+# merge con defunciones por comunidades calculadas en datComProvDefunciones
+datosESP2 <- merge(x = datosESP2, y = comDefunciones, by = c("date", "administrative_area_level_2"), all.x = TRUE)
+
+# calculo de las restantes variables:
+datosESP2 <- datosESP2 %>%
+  arrange(date) %>%
+  group_by(administrative_area_level_2) %>%
+  mutate(
+    inc_14d_deaths = rollapplyr(daily_deaths, width = 14, FUN = sum, fill = 0),
+    rat_inc_14d_deaths = c(rep(0, 7), diff(log(inc_14d_deaths), lag = 7) + 1),
+    rat_acum_confirmed_vs_deaths = round(100 * deaths / confirmed, 2),
+    rat_inc_14d_acum_confirmed_vs_deaths = round(100 * inc_14d_deaths / inc_14d, 2)
+  )
+
 
 
 
@@ -248,6 +264,20 @@ datosESP3 <- datosESP3 %>%
   )
 datosESP3 <- merge(x = datosESP3, y = pobProv, by = "administrative_area_level_3") %>%
   arrange(administrative_area_level_3, date)
+
+# merge con defunciones por comunidades calculadas en datComProvDefunciones
+datosESP3 <- merge(x = datosESP3, y = provDefunciones, by = c("date", "administrative_area_level_3"), all.x = TRUE)
+
+# calculo de las restantes variables:
+datosESP3 <- datosESP3 %>%
+  arrange(date) %>%
+  group_by(administrative_area_level_3) %>%
+  mutate(
+    inc_14d_deaths = rollapplyr(daily_deaths, width = 14, FUN = sum, fill = 0),
+    rat_inc_14d_deaths = c(rep(0, 7), diff(log(inc_14d_deaths), lag = 7) + 1),
+    rat_acum_confirmed_vs_deaths = round(100 * deaths / confirmed, 2),
+    rat_inc_14d_acum_confirmed_vs_deaths = round(100 * inc_14d_deaths / inc_14d, 2)
+  )
 
 
 
@@ -297,7 +327,7 @@ world_SF <- ne_countries(scale = "small", returnclass = "sf") %>%
 #------------------------------------------------------------------------------
 datosMapCom <- datosESP2 %>%
   filter(pred == FALSE) %>%
-  filter(!is.na(confirmed)) %>%
+  # filter(!is.na(confirmed)) %>%
   group_by(id, administrative_area_level_2, date) %>%
   arrange(date) %>%
   mutate(
@@ -308,14 +338,6 @@ datosMapCom <- datosESP2 %>%
 comunidades_SF <- readRDS("./data/gadm36_ESP_1_sf.rds") %>%
   rename(name = NAME_1) %>% 
   select(name, geometry)
-
-# mapComunidades <- merge(
-#   x = mapComunidades, y = datosCom,
-#   by.y = "administrative_area_level_2",
-#   by.x = "name"
-# ) %>% 
-#   select(name, date, confirmed, daily_confirmed, inc_14d, rat_inc_14d, population, geometry)
-
 #------------------------------------------------------------------------------
 
 
@@ -325,16 +347,13 @@ comunidades_SF <- readRDS("./data/gadm36_ESP_1_sf.rds") %>%
 #------------------------------------------------------------------------------
 datosMapProv <- datosESP3 %>%
   filter(pred == FALSE) %>%
-  filter(!is.na(confirmed)) %>%
-  group_by(administrative_area_level_3, date) %>%
+  # filter(!is.na(confirmed)) %>%
+  group_by(id, administrative_area_level_3, date) %>%
   arrange(date) %>%
-  summarise(
-    confirmed = tail(confirmed, 1),
-    daily_confirmed = tail(daily_confirmed, 1),
-    inc_14d = tail(inc_14d, 1),
-    rat_inc_14d = tail(rat_inc_14d, 1),
-    population = tail(population, 1)
-  )
+  mutate(
+    maxdate = max(date),
+  ) %>%
+  filter(date == maxdate)
 
 provincias_SF <- readRDS("./data/gadm36_ESP_2_sf.rds") %>%
   rename(name = NAME_2) %>%
