@@ -3,6 +3,7 @@
 #------------------------------------------------------------------------------
 library(tidyr)
 library(dplyr)
+library(openxlsx)
 
 
 # listado de comunidades
@@ -37,38 +38,39 @@ library(dplyr)
 
 
 #------------------------------------------------------------------------------
-# COMUNIDAD VALENCIANA
+# COMUNIDADES
 #------------------------------------------------------------------------------
 
 # defunciones
 #------------------------------------------------------------------------------
 
-CV_defunciones <- 
-  read.csv("https://dadesobertes.gva.es/ca/datastore/dump/69c32771-3d18-4654-8c3c-cb423fcfa652?bom=True") 
-CV_defunciones <- CV_defunciones %>% 
-  select(names(CV_defunciones)[!grepl("X_id|Homes|Dones|DEPARTAMENT", names(CV_defunciones))]) 
-names(CV_defunciones) <- c("date", "Comunidad Valenciana", "Alicante", "Castellón", "Valencia")
-CV_defunciones <- CV_defunciones %>% 
-  pivot_longer(cols = c("Comunidad Valenciana", "Alicante", "Castellón", "Valencia"))
-
-CV <- CV_defunciones %>%  
-  filter(name == "Comunidad Valenciana") %>% 
+comDefunciones <- read.xlsx("https://www.mscbs.gob.es/profesionales/saludPublica/ccayes/alertasActual/nCov-China/documentos/Fallecidos_COVID19.xlsx",
+                            detectDates = TRUE)
+detectDates <- nchar(comDefunciones[,1]) == 10
+comDefunciones <- comDefunciones[detectDates, ] %>% 
+  rename(date = 'Fecha./.CCAA',
+         "Principado de Asturias" = "Asturias",
+         "Islas Baleares" = "Baleares",
+         "Castilla-La Mancha" = "Castilla.La.Mancha",
+         "Castilla y León" = "Castilla.y.León",
+         "Comunidad Valenciana" = "C..Valenciana",
+         "Comunidad de Madrid" = "Madrid",
+         "Comunidad Foral de Navarra" = "Navarra", 
+         "País Vasco" = "País.Vasco",
+         "La Rioja" = "La.Rioja",
+         "Región de Murcia" = "Murcia")
+comDefunciones$España <- NULL
+comDefunciones <- comDefunciones %>% 
+  pivot_longer(cols = c("Andalucía", "Aragón", "Canarias", "Cantabria",                
+                        "Castilla y León", "Castilla-La Mancha", "Cataluña", "Ceuta",                    
+                        "Comunidad de Madrid", "Comunidad Foral de Navarra", "Comunidad Valenciana", "Extremadura",               
+                        "Galicia", "Islas Baleares", "La Rioja", "Melilla",                   
+                        "País Vasco", "Principado de Asturias", "Región de Murcia" )
+               ) %>% 
   rename(administrative_area_level_2 = name,
          daily_deaths = value) %>% 
+  mutate(date = as.Date(date)) %>% 
+  arrange(administrative_area_level_2, date) %>% 
   group_by(administrative_area_level_2) %>% 
-  mutate(date = as.Date(substr(date, 1, 10)),
-         deaths = cumsum(daily_deaths)) 
-
-
-CV_prov <- CV_defunciones %>%  
-  filter(name != "Comunidad Valenciana") %>% 
-  rename(administrative_area_level_3 = name,
-         daily_deaths = value) %>% 
-  group_by(administrative_area_level_3) %>% 
-  mutate(date = as.Date(substr(date, 1, 10)),
-         deaths = cumsum(daily_deaths))
-
-
-# juntamos los datos de todas las comunidades y provincias
-comDefunciones <- CV
-provDefunciones <- CV_prov
+  mutate(deaths = cumsum(daily_deaths))
+  

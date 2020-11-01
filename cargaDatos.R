@@ -5,13 +5,15 @@ library(forecast)
 library(purrr)
 library(ggplot2)
 library(plotly)
-library("rnaturalearth")
-library("sf")
+library(nloptr)
+library(numDeriv)
+library(rnaturalearth)
+library(sf)
 
 options(encoding = "UTF-8")
 
 source("customTheme.R")
-source("datComProvDefunciones.R")
+# source("datComProvDefunciones.R")
 
 #------------------------------------------------------------------------------
 # CONSTANTES
@@ -76,7 +78,7 @@ tipoVar <- list(
 )
 #------------------------------------------------------------------------------
 
-# funcion de prediccion a 14 dias
+# funcion de prediccion con arima
 predict.fun <- function(x, frequency) {
   # predicción confirmados diarios
   tryCatch(
@@ -101,7 +103,7 @@ predict.fun <- function(x, frequency) {
       y <- x$daily_deaths
       # y <- na.approx(y)
       # y[is.na(y)] <- 0
-      y[y < 0] <- NA
+      y[y <= 0] <- 1e-8
       x.ts <- ts(data = log(y), frequency = frequency)
       ar <- arima(x.ts, order = c(1, 1, 1), seasonal = c(0, 1, 0))
       fc_deaths <- round(exp(forecast(ar, DIAS_PREDICT)$mean), 2)
@@ -175,6 +177,8 @@ pred <- datosESP1 %>%
   split(.$administrative_area_level_1) %>%
   map_dfr(~ predict.fun(x = ., frequency = 7)) %>%
   as.data.frame()
+
+
 pred <- pred %>%
   mutate(pred = TRUE)
 datosESP1 <- datosESP1 %>%
@@ -265,19 +269,19 @@ datosESP3 <- datosESP3 %>%
 datosESP3 <- merge(x = datosESP3, y = pobProv, by = "administrative_area_level_3") %>%
   arrange(administrative_area_level_3, date)
 
-# merge con defunciones por comunidades calculadas en datComProvDefunciones
-datosESP3 <- merge(x = datosESP3, y = provDefunciones, by = c("date", "administrative_area_level_3"), all.x = TRUE)
-
-# calculo de las restantes variables:
-datosESP3 <- datosESP3 %>%
-  arrange(date) %>%
-  group_by(administrative_area_level_3) %>%
-  mutate(
-    inc_14d_deaths = rollapplyr(daily_deaths, width = 14, FUN = sum, fill = 0),
-    rat_inc_14d_deaths = c(rep(0, 7), diff(log(inc_14d_deaths), lag = 7) + 1),
-    rat_acum_confirmed_vs_deaths = round(100 * deaths / confirmed, 2),
-    rat_inc_14d_acum_confirmed_vs_deaths = round(100 * inc_14d_deaths / inc_14d, 2)
-  )
+# # merge con defunciones por comunidades calculadas en datComProvDefunciones
+# datosESP3 <- merge(x = datosESP3, y = provDefunciones, by = c("date", "administrative_area_level_3"), all.x = TRUE)
+# 
+# # calculo de las restantes variables:
+# datosESP3 <- datosESP3 %>%
+#   arrange(date) %>%
+#   group_by(administrative_area_level_3) %>%
+#   mutate(
+#     inc_14d_deaths = rollapplyr(daily_deaths, width = 14, FUN = sum, fill = 0),
+#     rat_inc_14d_deaths = c(rep(0, 7), diff(log(inc_14d_deaths), lag = 7) + 1),
+#     rat_acum_confirmed_vs_deaths = round(100 * deaths / confirmed, 2),
+#     rat_inc_14d_acum_confirmed_vs_deaths = round(100 * inc_14d_deaths / inc_14d, 2)
+#   )
 
 
 
