@@ -26,16 +26,18 @@ custom_theme <-
 
 text_color <- "#8B9BA8" # bluish grey
 
-custom_palette <-
-  c(
-    "#F9C80E", # gold
-    "#F86624", # orange
-    "#52A4D3", # sky blue
-    "#21D19F", # mint
-    "#FC3C0C", # red
+palette <-
+  list(
+    gold = "#F9C80E",
+    orange = "#F86624",
+    skyblue = "#52A4D3",
+    mint = "#21D19F",
+    red = "#FC3C0C",
     # "#EA3546", # red
-    "#FF938C", # pink
-    "#58267F", # purple
-    "#F3FFBD", # light yellow
-    "#39E547" # green
+    pink = "#FF938C", 
+    purple = "#58267F", 
+    lightyellow = "#F3FFBD", 
+    green = "#39E547",
+    lightorange = "#FCCC0C",
+    white = "#FFFFFF"
   )
