@@ -13,7 +13,7 @@ library(sf)
 options(encoding = "UTF-8")
 
 source("customTheme.R")
-# source("datComProvDefunciones.R")
+source("datComProvDefunciones.R")
 
 #------------------------------------------------------------------------------
 # CONSTANTES
@@ -44,6 +44,16 @@ tipoVar <- list(
     unidad = "",
     tipo = "ratio"
   ),
+  inc_7d = list(
+    descripcion = "incidencia de casos últimos 7 días (IA 7d)",
+    unidad = "n",
+    tipo = "numerico"
+  ),
+  rat_inc_7d = list(
+    descripcion = "razón de tasas IA 7d",
+    unidad = "",
+    tipo = "ratio"
+  ),
   daily_deaths = list(
     descripcion = "nº defunciones diarias",
     unidad = "n",
@@ -62,6 +72,16 @@ tipoVar <- list(
   ),
   rat_inc_14d_deaths = list(
     descripcion = "razón de tasas defunciones IA 14d",
+    unidad = "",
+    tipo = "ratio"
+  ),
+  inc_7d_deaths = list(
+    descripcion = "incidencia de defunciones últimos 7 días (IA 7d)",
+    unidad = "n",
+    tipo = "numerico"
+  ),
+  rat_inc_7d_deaths = list(
+    descripcion = "razón de tasas defunciones IA 7d",
     unidad = "",
     tipo = "ratio"
   ),
@@ -193,6 +213,8 @@ datosESP1 <- datosESP1 %>%
     confirmed = cumsum(daily_confirmed),
     inc_14d = rollapplyr(daily_confirmed, width = 14, FUN = sum, fill = 0),
     rat_inc_14d = c(rep(0, 7), diff(log(inc_14d), lag = 7) + 1),
+    inc_7d = rollapplyr(daily_confirmed, width = 7, FUN = sum, fill = 0),
+    rat_inc_7d = c(rep(0, 7), diff(log(inc_7d), lag = 7) + 1),
     deaths = cumsum(daily_deaths),
     inc_14d_deaths = rollapplyr(daily_deaths, width = 14, FUN = sum, fill = 0),
     rat_inc_14d_deaths = c(rep(0, 7), diff(log(inc_14d_deaths), lag = 7) + 1),
@@ -222,6 +244,8 @@ datosESP2 <- datosESP2 %>%
     avg_7d_daily_confirmed = rollapplyr(daily_confirmed, width = 7, FUN = mean, fill = 0),
     inc_14d = rollapplyr(daily_confirmed, width = 14, FUN = sum, fill = 0),
     rat_inc_14d = c(rep(0, 7), diff(log(inc_14d), lag = 7) + 1),
+    inc_7d = rollapplyr(daily_confirmed, width = 7, FUN = sum, fill = 0),
+    rat_inc_7d = c(rep(0, 7), diff(log(inc_14d), lag = 7) + 1),
     pred = FALSE
   )
 datosESP2 <- merge(x = datosESP2, y = pobComAut, by = "administrative_area_level_2") %>%
@@ -264,6 +288,8 @@ datosESP3 <- datosESP3 %>%
     avg_7d_daily_confirmed = rollapplyr(daily_confirmed, width = 7, FUN = mean, fill = 0),
     inc_14d = rollapplyr(daily_confirmed, width = 14, FUN = sum, fill = 0),
     rat_inc_14d = c(rep(0, 7), diff(log(inc_14d), lag = 7) + 1),
+    inc_7d = rollapplyr(daily_confirmed, width = 7, FUN = sum, fill = 0),
+    rat_inc_7d = c(rep(0, 7), diff(log(inc_7d), lag = 7) + 1),
     pred = FALSE
   )
 datosESP3 <- merge(x = datosESP3, y = pobProv, by = "administrative_area_level_3") %>%
@@ -309,6 +335,8 @@ datosMapWorld <- datosESP1 %>%
     daily_confirmed = tail(daily_confirmed, 1),
     inc_14d = tail(inc_14d, 1),
     rat_inc_14d = tail(rat_inc_14d, 1),
+    inc_7d = tail(inc_7d, 1),
+    rat_inc_7d = tail(rat_inc_7d, 1),
     deaths = tail(deaths, 1),
     daily_deaths = tail(daily_deaths, 1),
     inc_14d_deaths = tail(inc_14d_deaths, 1),

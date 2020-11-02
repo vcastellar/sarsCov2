@@ -48,7 +48,10 @@ ui <- fluidPage(
           "nº casos totales"= "confirmed",
           "nº casos diarios"= "daily_confirmed",
           "incidencia de casos últimos 14 días (IA 14d)" = "inc_14d",
+          "incidencia de casos últimos 7 días (IA 7d)" = "inc_7d",
           "razón de tasas IA 14d"= "rat_inc_14d",
+          "razón de tasas IA 7d"= "rat_inc_7d",
+          
           "nº de defunciones" = "deaths",
           "nº defunciones diarias"= "daily_deaths",
           "incidencia de defunciones últimos 14 días (IA 14d)" = "inc_14d_deaths",
