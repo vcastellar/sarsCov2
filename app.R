@@ -559,7 +559,7 @@ server <- function(input, output, session) {
   #----------------------------------------------------------------------------
   output$mainPlotCom <- renderPlotly({
     dat <- mainCalcCom()
-    if (input$tasas & !input$variable %in% c("rat_inc_14d", "rat_inc_14d_deaths", "rat_acum_confirmed_vs_deaths")) {
+    if (input$tasas & !grepl("rat", input$variable)) {
       denominador <- dat$population / 1e5
     } else {
       denominador <- 1
@@ -610,7 +610,7 @@ server <- function(input, output, session) {
   #----------------------------------------------------------------------------
   output$mainPlotProv <- renderPlotly({
     dat <- mainCalcProv()
-    if (input$tasas & !input$variable %in% c("rat_inc_14d", "rat_inc_14d_deaths", "rat_acum_confirmed_vs_deaths")) {
+    if (input$tasas & !grepl("rat", input$variable)) {
       denominador <- dat$population / 1e5
     } else {
       denominador <- 1
