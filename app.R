@@ -34,7 +34,7 @@ ui <- fluidPage(
   theme = shinytheme("slate"),
 
   # Application title
-  titlePanel("SARS-COV2 España"),
+  # titlePanel("SARS-COV2 España"),
 
   # Sidebar with a slider input for number of bins
   sidebarLayout(
@@ -98,9 +98,7 @@ ui <- fluidPage(
     mainPanel(
       width = 9,
       add_busy_spinner(spin = "fading-circle", color = "#F3FFBD"),
-      tabsetPanel(
-        type = "tabs",
-        
+      navbarPage("SARS-COV2",
         
         tabPanel(
           "Países",
@@ -216,7 +214,6 @@ ui <- fluidPage(
     )
   )
 )
-
 
 #------------------------------------------------------------------------------
 # Define server

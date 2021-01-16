@@ -150,22 +150,27 @@ pobComAut <- read.csv2("./data/poblacionCom.csv", fileEncoding = "LATIN1", strin
 pobProv <- read.csv2("./data/poblacionProv.csv", fileEncoding = "LATIN1", stringsAsFactors = FALSE)
 
 # datos agregados por paises
-datosESP1 <- read.csv("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv/data.csv",
+# las siguientes líneas se asteriscan dado el cambio de formato de datos de la fuente
+kk <- read.csv("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv/data.csv",
   na.strings = "",
   fileEncoding = "UTF-8-BOM",
   stringsAsFactors = FALSE
 )
+# datosESP1 <- datosESP1 %>%  mutate(year = substr(dateRep, 7, 10),
+#                                    month = substr(dateRep, 4, 5),
+#                                    day = substr(dateRep, 1, 2))
+datosESP1 <- covid19()
 datosESP1 <- datosESP1 %>%
   mutate(
-    id = countryterritoryCode,
-    date = as.Date(paste0(year, "-", month, "-", day)),
-    administrative_area_level_1 = countriesAndTerritories,
-    continent = continentExp,
-    daily_confirmed = cases,
-    daily_deaths = deaths,
-    population = popData2019
+    id = id,
+    date = as.Date(date),
+    administrative_area_level_1 = administrative_area_level_1,
+    # continent = continentExp,
+    daily_confirmed = c(0, diff(confirmed)),
+    daily_deaths = c(0, diff(deaths)),
+    population = population
   ) %>%
-  select(id, date, administrative_area_level_1, continent, daily_confirmed, daily_deaths, population) %>%
+  select(id, date, administrative_area_level_1, daily_confirmed, daily_deaths, population) %>%
   arrange(id, date)
 
 
@@ -182,6 +187,7 @@ datosESP1 <-
       ) %>%
       filter(sel == TRUE))$administrative_area_level_1)
 
+datosESP1[is.na(datosESP1)] <- 0
 
 
 
@@ -229,13 +235,16 @@ datosESP1 <- datosESP1 %>%
 #------------------------------------------------------------------------------
 
 datosESP2 <- covid19(country = "ESP", level = 2, verbose = TRUE)
-# datosESP2 <- read.csv("https://cnecovid.isciii.es/covid19/resources/datos_ccaas.csv")
+# datosESP2 <- read.csv("https://cnecovid.isciii.es/covid19/resources/casos_diag_ccaadecl.csv")
 # atención: eventualmente, mientras no se cambie la fuente de datos, o la actual
 #           solucione el problema, como La Rioja no tiene datos actualizados
 #           se pone los confirmados a NA
 # datosESP2$confirmed[datosESP2$administrative_area_level_2 == "La Rioja"] <- NA
 
 datosESP2 <- datosESP2 %>%
+  # mutate(administrative_area_level_2 = ccaa_iso,
+  #        confirmed = num_casos,
+  #        date = as.Date(fecha)) %>% 
   select(date, confirmed, administrative_area_level_2) %>%
   arrange(date) %>%
   group_by(administrative_area_level_2) %>%
@@ -248,6 +257,29 @@ datosESP2 <- datosESP2 %>%
     rat_inc_7d = c(rep(0, 7), diff(log(inc_14d), lag = 7) + 1),
     pred = FALSE
   )
+
+# CCAA <- list('AN' = "Andalucía", 
+#              'AR' = "Aragón", 
+#              'CN' = "Canarias", 
+#              'CB' = "Cantabria",                
+#              'CL' = "Castilla y León", 
+#              'CM' = "Castilla-La Mancha", 
+#              'CT' = "Cataluña", 
+#              'CE' = "Ceuta",                    
+#              'MD' = "Comunidad de Madrid", 
+#              'NC' = "Comunidad Foral de Navarra", 
+#              'VC' = "Comunidad Valenciana", 
+#              'EX' = "Extremadura",               
+#              'GA' = "Galicia", 
+#              'IB' = "Islas Baleares", 
+#              'RI' = "La Rioja", 
+#              'ML' ="Melilla",                   
+#              'PV' = "País Vasco", 
+#              'AS' = "Principado de Asturias", 
+#              'MC' = "Región de Murcia")
+# datosESP2 <- datosESP2 %>%  rename(id = administrative_area_level_2)
+# datosESP2$administrative_area_level_2 <- as.character(CCAA[datosESP2$id])
+
 datosESP2 <- merge(x = datosESP2, y = pobComAut, by = "administrative_area_level_2") %>%
   arrange(administrative_area_level_2, date)
 
@@ -317,7 +349,7 @@ listaProvincias <- unique(datosESP3$administrative_area_level_3)
 
 ISOcod <- read.csv("./data/ISOcod.csv")
 
-
+datosESP1
 
 
 #------------------------------------------------------------------------------
@@ -408,11 +440,19 @@ provincias_SF <- readRDS("./data/gadm36_ESP_2_sf.rds") %>%
 #------------------------------------------------------------------------------
 
 save(DIAS_PREDICT, 
-     datosESP1, datosESP2, datosESP3,
-     listaPaises, listaComunidades, listaProvincias,
+     datosESP1, 
+     datosESP2,
+     datosESP3,
+     listaPaises,
+     listaComunidades,
+     listaProvincias,
      ISOcod, 
-     datosMapWorld, datosMapCom, datosMapProv,
-     world_SF, comunidades_SF, provincias_SF,
+     datosMapWorld,
+     datosMapCom,
+     datosMapProv,
+     world_SF, 
+     comunidades_SF, 
+     provincias_SF,
      tipoVar,
      file = "./data/datosESP.RData"
 )
