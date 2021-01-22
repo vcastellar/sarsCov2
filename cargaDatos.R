@@ -19,7 +19,7 @@ autf8 <- function(texto)
   texto <- gsub("<U\\+00E9>", "é", texto)
   texto <- gsub("<U\\+00ED>", "í", texto)
   texto <- gsub("<U\\+00F3>", "ó", texto)
-  texto <- gsub("<U\\+00FA>", "ó", texto)
+  texto <- gsub("<U\\+00FA>", "ú", texto)
   texto <- gsub("<U\\+00F1>", "ñ", texto)
   return(texto)
 }
