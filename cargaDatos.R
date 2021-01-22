@@ -11,6 +11,18 @@ library(rnaturalearth)
 library(sf)
 
 options(encoding = "UTF-8")
+Sys.setlocale("LC_CTYPE", "")
+autf8 <- function(texto)
+{
+  texto <- gsub("<U\\+00E1>", "á", texto)
+  texto <- gsub("<U\\+00C1>", "Á", texto)
+  texto <- gsub("<U\\+00E9>", "é", texto)
+  texto <- gsub("<U\\+00ED>", "í", texto)
+  texto <- gsub("<U\\+00F3>", "ó", texto)
+  texto <- gsub("<U\\+00FA>", "ó", texto)
+  texto <- gsub("<U\\+00F1>", "ñ", texto)
+  return(texto)
+}
 
 source("customTheme.R")
 source("datComProvDefunciones.R")
@@ -162,7 +174,6 @@ kk <- read.csv("https://opendata.ecdc.europa.eu/covid19/casedistribution/csv/dat
 datosESP1 <- covid19()
 datosESP1 <- datosESP1 %>%
   mutate(
-    id = id,
     date = as.Date(date),
     administrative_area_level_1 = administrative_area_level_1,
     # continent = continentExp,
@@ -235,6 +246,8 @@ datosESP1 <- datosESP1 %>%
 #------------------------------------------------------------------------------
 
 datosESP2 <- covid19(country = "ESP", level = 2, verbose = TRUE)
+datosESP2$administrative_area_level_2 <- autf8(datosESP2$administrative_area_level_2)
+
 # datosESP2 <- read.csv("https://cnecovid.isciii.es/covid19/resources/casos_diag_ccaadecl.csv")
 # atención: eventualmente, mientras no se cambie la fuente de datos, o la actual
 #           solucione el problema, como La Rioja no tiene datos actualizados
@@ -310,6 +323,8 @@ datosESP3 <- covid19(country = "ESP", level = 3, verbose = TRUE)
 #           solucione el problema, como La Rioja no tiene datos actualizados
 #           se pone los confirmados a NA
 # datosESP3$confirmed[datosESP3$administrative_area_level_3 == "La Rioja"] <- NA
+datosESP3$administrative_area_level_3 <- autf8(datosESP3$administrative_area_level_3)
+
 
 datosESP3 <- datosESP3 %>%
   select(date, confirmed, administrative_area_level_3) %>%
