@@ -21,7 +21,8 @@ custom_theme <-
     strip.background = element_rect(fill = "#272B30"),
     strip.text = element_text(color = "#8B9BA8", face = "bold"),
 
-    text = element_text(family = "FranklinGothic-Book")
+    text = element_text(family = "FranklinGothic-Book",
+                        angle = 55)
   )
 
 text_color <- "#8B9BA8" # bluish grey
